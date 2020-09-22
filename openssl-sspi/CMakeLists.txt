@@ -2,4 +2,5 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-add_executable(openssl-sspi "openssl-sspi.cpp" "openssl-sspi.h")
+add_executable(openssl-test "openssl-test.cpp" "openssl-test.h")
+target_link_libraries(openssl-test ws2_32)
