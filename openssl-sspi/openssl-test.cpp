@@ -6,6 +6,8 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
+#include <openssl/ssl.h>
+
 #include "scope_guard.hpp"
 
 int main()
@@ -17,6 +19,12 @@ int main()
         fprintf(stderr, "WSAStartup failed: %d", retval);
         return 1;
     }
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    if (!ctx) {
+        fprintf(stderr, "Failed to create SSL context\n");
+        return 1;
+    }
+    auto sslctx_guard = sg::make_scope_guard([&] { SSL_CTX_free(ctx); });
 
     struct addrinfo *result = nullptr;
     struct addrinfo hints = { 0 };
@@ -24,7 +32,7 @@ int main()
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    retval = getaddrinfo("overwatch.kde.org", "80", &hints, &result);
+    retval = getaddrinfo("overwatch.kde.org", "443", &hints, &result);
     if (retval != 0) {
         fprintf(stderr, "getaddrinfo failed: %d\n", retval);
         return 1;
@@ -46,9 +54,27 @@ int main()
         return 1;
     }
 
+    SSL* ssl = SSL_new(ctx);
+    if (!ssl) {
+        fprintf(stderr, "failed to create SSL object\n");
+        return 1;
+    }
+    auto ssl_guard = sg::make_scope_guard([&] { SSL_free(ssl); });
+
+    retval = SSL_set_fd(ssl, sock);
+    if (!retval) {
+        fprintf(stderr, "Failed to set fd on SSL connection\n");
+        return 1;
+    }
+
+    retval = SSL_connect(ssl);
+    if (retval != 1) {
+        fprintf(stderr, "Failed to SSL_connect: %d\n", retval);
+    }
+
     const char* sendbuf = "GET / HTTP/1.1\r\nHost: overwatch.kde.org\r\nConnection: close\r\n\r\n";
     size_t sendsize = strlen(sendbuf);
-    retval = send(sock, sendbuf, sendsize, 0);
+    retval = SSL_write(ssl, sendbuf, sendsize);
     if (retval != sendsize) {
         fprintf(stderr, "send failed or didn't send all\n");
         return 1;
@@ -56,7 +82,7 @@ int main()
 
     char recvbuf[512];
     do {
-        retval = recv(sock, recvbuf, sizeof(recvbuf)-1, 0);
+        retval = SSL_read(ssl, recvbuf, sizeof(recvbuf)-1);
         if (retval > 0) {
             recvbuf[retval] = '\0';
             printf("Got data: <%s>\n", recvbuf);
