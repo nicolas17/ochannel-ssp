@@ -70,6 +70,7 @@ int main()
     retval = SSL_connect(ssl);
     if (retval != 1) {
         fprintf(stderr, "Failed to SSL_connect: %d\n", retval);
+        return 1;
     }
 
     const char* sendbuf = "GET / HTTP/1.1\r\nHost: overwatch.kde.org\r\nConnection: close\r\n\r\n";
