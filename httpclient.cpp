@@ -130,6 +130,10 @@ std::optional<HTTPClient::DataEvent> HTTPClient::handle_data()
     recv_buffer.erase(0, amount_to_read);
     nbytes_received += amount_to_read;
 
+    if (nbytes_received == content_length) {
+        state = DONE;
+    }
+
     return event;
 }
 
