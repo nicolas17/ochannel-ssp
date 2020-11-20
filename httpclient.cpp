@@ -125,6 +125,10 @@ std::optional<HTTPClient::DataEvent> HTTPClient::handle_data()
     printf("Buffer has %zu\n", recv_buffer.length());
     printf("We'll read %zu\n", amount_to_read);
 
+    if (amount_to_read == 0) {
+        return std::nullopt;
+    }
+
     DataEvent event;
     event.data = recv_buffer.substr(0, amount_to_read);
 

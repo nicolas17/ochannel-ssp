@@ -36,7 +36,7 @@ int main() {
     struct sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(80);
-    inet_aton("217.13.79.76", &addr.sin_addr);
+    inet_aton("93.184.216.34", &addr.sin_addr);
 
     int sock = socket(PF_INET, SOCK_STREAM, 0);
     assert(sock>=0);
@@ -45,6 +45,7 @@ int main() {
         printf("Failed to connect\n");
         return 1;
     }
+    printf("Connected\n");
 
     while (true) {
 
