@@ -8,3 +8,6 @@ project(openssl-sspi CXX)
 
 # Include sub-projects.
 add_subdirectory("openssl-sspi")
+
+add_executable(httpclient httpclient.cpp)
+set_target_properties(httpclient PROPERTIES CXX_STANDARD 17)
