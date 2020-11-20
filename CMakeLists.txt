@@ -9,5 +9,9 @@ project(openssl-sspi CXX)
 # Include sub-projects.
 add_subdirectory("openssl-sspi")
 
-add_executable(httpclient httpclient.cpp)
-set_target_properties(httpclient PROPERTIES CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 17)
+
+add_library(httpclient OBJECT httpclient.cpp)
+
+add_executable(httpclient_test httpclient_test.cpp)
+target_link_libraries(httpclient_test httpclient)
