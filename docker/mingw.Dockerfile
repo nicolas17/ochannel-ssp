@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y eatmydata apt-utils
 RUN eatmydata apt-get install -y --no-install-recommends \
     wget ca-certificates \
     perl make \
-    gcc-mingw-w64 g++-mingw-w64 \
+    gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 \
     cmake ninja-build
 
 RUN useradd -m builder
