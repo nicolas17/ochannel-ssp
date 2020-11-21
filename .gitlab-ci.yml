@@ -14,4 +14,4 @@ build-mingw:
     - mkdir build
     - cd build
     - cmake .. -G Ninja -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_PREFIX_PATH=$HOME/dist
-    - ninja httpclient_test openssl-test
+    - ninja httpclient_test httpclient_nettest openssl-test
