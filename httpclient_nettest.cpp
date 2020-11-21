@@ -26,11 +26,8 @@ int sendall(int sock, const char* data, size_t length) {
     return length;
 }
 
-int main() {
-    HTTPClient client;
-
-    client.make_get_request("/", {{"Host","example.com"}});
-
+int main()
+{
     int retval;
 
     struct sockaddr_in addr{};
@@ -47,6 +44,9 @@ int main() {
     }
     printf("Connected\n");
 
+    HTTPClient client;
+    client.make_get_request("/", {{"Host","example.com"}});
+
     while (true) {
 
         if (auto http_to_send = client.data_to_send()) {
@@ -57,7 +57,7 @@ int main() {
         char buf[256];
         printf("Receiving...\n");
         retval = recv(sock, buf, sizeof(buf), 0);
-        if (retval <= 0) return 1; // TODO error handling
+        if (retval <= 0) return 1;
 
         printf("Got %zu bytes from network\n", retval);
         client.receive_data(std::string(buf, retval));
@@ -68,7 +68,7 @@ int main() {
             if (auto resp_event = std::get_if<HTTPClient::ResponseEvent>(&event_v)) {
                 printf("Got response with code %d\n", resp_event->status_code);
             } else if (auto data_event = std::get_if<HTTPClient::DataEvent>(&event_v)) {
-                ;
+                printf("Got %zu bytes of data\n", data_event->data.length());
             }
         }
     }
