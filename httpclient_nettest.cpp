@@ -33,7 +33,7 @@ int main()
     struct sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(80);
-    inet_aton("93.184.216.34", &addr.sin_addr);
+    inet_pton(AF_INET, "93.184.216.34", &addr.sin_addr);
 
     int sock = socket(PF_INET, SOCK_STREAM, 0);
     assert(sock>=0);
