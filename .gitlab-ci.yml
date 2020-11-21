@@ -1,0 +1,18 @@
+build-linux:
+  stage: build
+  image: $CI_REGISTRY/nicolas17/openssl-sspi/build:linux
+  script:
+    - mkdir build
+    - cd build
+    - cmake .. -G Ninja
+    - ninja httpclient_test httpclient_nettest
+
+build-mingw:
+  stage: build
+  image: $CI_REGISTRY/nicolas17/openssl-sspi/build:mingw
+  script:
+    - mkdir build
+    - cd build
+    - id
+    - cmake .. -G Ninja -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_PREFIX_PATH=$HOME/dist
+    - ninja openssl-test
