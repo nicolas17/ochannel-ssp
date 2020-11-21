@@ -13,6 +13,5 @@ build-mingw:
   script:
     - mkdir build
     - cd build
-    - id
     - cmake .. -G Ninja -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_PREFIX_PATH=$HOME/dist
     - ninja openssl-test
