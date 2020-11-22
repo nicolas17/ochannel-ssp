@@ -6,7 +6,8 @@ cmake_minimum_required(VERSION 3.8)
 
 project(openssl-sspi CXX)
 
-# Include sub-projects.
+find_package(OpenSSL REQUIRED)
+
 add_subdirectory("openssl-sspi")
 
 set(CMAKE_CXX_STANDARD 17)
