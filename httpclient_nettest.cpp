@@ -38,6 +38,14 @@ int sendall(int sock, const char* data, size_t length) {
 int main()
 {
     int retval;
+#ifdef WIN32
+    WSADATA wsaData;
+    retval = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (retval != 0) {
+        fprintf(stderr, "WSAStartup failed: %d", retval);
+        return 1;
+    }
+#endif
 
     struct sockaddr_in addr{};
     addr.sin_family = AF_INET;
