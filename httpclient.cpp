@@ -4,6 +4,7 @@
 
 #include "httpclient.h"
 
+#include <algorithm> // std::min
 #include <charconv>
 #include <cassert>
 
