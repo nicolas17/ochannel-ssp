@@ -15,3 +15,13 @@ build-mingw:
     - cd build
     - cmake .. -G Ninja -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_PREFIX_PATH=$HOME/dist
     - ninja httpclient_test httpclient_nettest openssl-test
+
+build-msvc2017:
+  stage: build
+  tags:
+    - msvc2017
+  script:
+    - mkdir build
+    - cd build
+    - cmake .. -G "NMake Makefiles" -DCMAKE_TOOLCHAIN_FILE=C:\GitLabRunner\vcpkg\scripts\buildsystems\vcpkg.cmake
+    - nmake
