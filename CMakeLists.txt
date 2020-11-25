@@ -22,7 +22,7 @@ target_link_libraries(httpclient_test httpclient)
 add_executable(httpclient_nettest httpclient_nettest.cpp)
 target_link_libraries(httpclient_nettest httpclient)
 if(WIN32)
-target_link_libraries(httpclient_nettest ws2_32)
+    target_link_libraries(httpclient_nettest ws2_32)
 endif()
 
 
@@ -31,3 +31,6 @@ target_link_libraries(opensslclient OpenSSL::SSL)
 
 add_executable(opensslclient_test opensslclient_test.cpp)
 target_link_libraries(opensslclient_test opensslclient)
+if(WIN32)
+    target_link_libraries(opensslclient_test ws2_32)
+endif()
