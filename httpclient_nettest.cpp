@@ -76,7 +76,7 @@ int main()
         retval = recv(sock, buf, sizeof(buf), 0);
         if (retval <= 0) return 1;
 
-        printf("Got %zu bytes from network\n", retval);
+        printf("Got %d bytes from network\n", retval);
         client.receive_data(std::string(buf, retval));
 
         while (auto maybe_event = client.next_event()) {

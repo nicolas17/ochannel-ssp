@@ -94,7 +94,7 @@ std::optional<HTTPClient::ResponseEvent> HTTPClient::handle_response()
 
         if (name == "Content-Length") {
             auto parse_result = std::from_chars(value.data(), value.data()+value.size(), this->content_length);
-            printf("We parsed content-length value '%s' as %zu, errc %u\n", value.c_str(), content_length, parse_result.ec);
+            printf("We parsed content-length value '%s' as %zu, errc %d\n", value.c_str(), content_length, (int)parse_result.ec);
             if (parse_result.ec != std::errc()) {
                 throw ProtocolError();
             }
