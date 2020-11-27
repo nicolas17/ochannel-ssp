@@ -9,3 +9,5 @@ project(openssl-sspi CXX)
 find_package(OpenSSL REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
+
+add_library(testssp MODULE ssp.cpp exports.def)
