@@ -22,6 +22,12 @@ SECURITY_STATUS SEC_ENTRY myEnumerateSecurityPackagesW(
 ) {
     printf("[testssp] EnumerateSecurityPackagesW called\n");
     *pcPackages = 1;
+
+    // If function A uses 'new Foo' and function B uses 'new Bar[42]',
+    // and SSPI says the results of both A and B can be freed with FreeContextBuffer,
+    // there would be no implementation of FreeContextBuffer that would work
+    // in both cases (delete vs delete[]). Therefore we need to use plain C
+    // malloc/free when FreeContextBuffer is involved.
     SecPkgInfoW* packages = (SecPkgInfoW*)malloc(sizeof(SecPkgInfo) * 1);
     packages[0].fCapabilities = SECPKG_FLAG_PRIVACY | SECPKG_FLAG_CLIENT_ONLY | SECPKG_FLAG_STREAM;
     packages[0].wVersion = 1;
