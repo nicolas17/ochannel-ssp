@@ -1,0 +1,21 @@
+build-msvc2017-32:
+  stage: build
+  tags:
+    - msvc2017
+  script:
+    - call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86
+    - mkdir build
+    - cd build
+    - cmake .. -G "NMake Makefiles" -DCMAKE_TOOLCHAIN_FILE=C:\GitLabRunner\vcpkg\scripts\buildsystems\vcpkg.cmake
+    - nmake
+
+build-msvc2017-64:
+  stage: build
+  tags:
+    - msvc2017
+  script:
+    - call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+    - mkdir build
+    - cd build
+    - cmake .. -G "NMake Makefiles" -DCMAKE_TOOLCHAIN_FILE=C:\GitLabRunner\vcpkg\scripts\buildsystems\vcpkg.cmake
+    - nmake
