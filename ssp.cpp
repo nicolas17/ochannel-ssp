@@ -49,6 +49,33 @@ SECURITY_STATUS SEC_ENTRY myFreeContextBuffer(PVOID pvContextBuffer)
     return SEC_E_OK;
 }
 
+class SSPCredentials {
+public:
+    static const UINT32 MAGIC = 0x5cb2715c;
+
+    SSPCredentials();
+    CredHandle toHandle() const;
+    static SSPCredentials* fromHandle(PCredHandle handle);
+
+private:
+    // non-copyable
+    SSPCredentials(const SSPCredentials&) = delete;
+    SSPCredentials& operator=(const SSPCredentials&) = delete;
+};
+CredHandle SSPCredentials::toHandle() const {
+    return { MAGIC, reinterpret_cast<UINT_PTR>(this) };
+}
+SSPCredentials* SSPCredentials::fromHandle(PCredHandle handle) {
+    if (handle->dwLower == MAGIC) {
+        return reinterpret_cast<SSPCredentials*>(handle->dwUpper);
+    } else {
+        return nullptr;
+    }
+}
+SSPCredentials::SSPCredentials() {
+    ;
+}
+
 extern "C"
 SECURITY_STATUS SEC_ENTRY myAcquireCredentialsHandleW(
     _In_opt_  SEC_WCHAR*     pszPrincipal,
@@ -62,7 +89,23 @@ SECURITY_STATUS SEC_ENTRY myAcquireCredentialsHandleW(
     _Out_opt_ PTimeStamp     ptsExpiry
 ) {
     printf("principal '%ls' package '%ls' credentialuse %lu logonid %p authdata %p getkeyfn %p getkeyarg %p pcredential %p pexpiry %p\n", pszPrincipal, pszPackage, fCredentialUse, pvLogonID, pAuthData, pGetKeyFn, pvGetKeyArgument, phCredential, ptsExpiry);
-    return SEC_E_INTERNAL_ERROR;
+    SSPCredentials* cred = new SSPCredentials();
+    *phCredential = cred->toHandle();
+
+    return SEC_E_OK;
+}
+
+extern "C"
+SECURITY_STATUS SEC_ENTRY myFreeCredentialsHandle(PCredHandle phCredential)
+{
+    printf("[testssp] FreeCredentialsHandle(%p)\n", phCredential);
+    SSPCredentials* cred = SSPCredentials::fromHandle(phCredential);
+    if (cred) {
+        delete cred;
+        return SEC_E_OK;
+    } else {
+        return SEC_E_INVALID_HANDLE;
+    }
 }
 
 SecurityFunctionTableW g_functionTable = {
@@ -70,7 +113,7 @@ SecurityFunctionTableW g_functionTable = {
     &myEnumerateSecurityPackagesW, // EnumerateSecurityPackagesW
     nullptr, // QueryCredentialsAttributesW
     &myAcquireCredentialsHandleW, // AcquireCredentialsHandleW
-    nullptr, // FreeCredentialsHandle
+    &myFreeCredentialsHandle, // FreeCredentialsHandle
     nullptr, // Reserved2
     nullptr, // InitializeSecurityContextW
     nullptr, // AcceptSecurityContext
