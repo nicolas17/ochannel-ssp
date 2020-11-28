@@ -20,7 +20,7 @@ SECURITY_STATUS SEC_ENTRY myEnumerateSecurityPackagesW(
     unsigned long *pcPackages,
     PSecPkgInfoW  *ppPackageInfo
 ) {
-    printf("EnumerateSecurityPackagesW called in testssp\n");
+    printf("[testssp] EnumerateSecurityPackagesW called\n");
     *pcPackages = 1;
     SecPkgInfoW* packages = (SecPkgInfoW*)malloc(sizeof(SecPkgInfo) * 1);
     packages[0].fCapabilities = SECPKG_FLAG_PRIVACY | SECPKG_FLAG_CLIENT_ONLY | SECPKG_FLAG_STREAM;
@@ -91,6 +91,6 @@ SecurityFunctionTableW g_functionTable = {
 
 extern "C"
 PSecurityFunctionTableW SEC_ENTRY InitSecurityInterfaceW() {
-    printf("InitSecurityInterface called in testssp\n");
+    printf("[testssp] InitSecurityInterface called\n");
     return &g_functionTable;
 }
