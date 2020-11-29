@@ -150,7 +150,7 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
     _Out_       unsigned long* pfContextAttr,
     _Out_opt_   PTimeStamp     ptsExpiry
 ) {
-    printf("[testssp] InitializeSecurityContext credential '%p' (%p) pcontext '%p' target name '%ls' contextReq 0x%ux targetdatarep %u pInput (%d buffers), pnewcontext %p, pOutput (%d buffers), pContextAttr %p pexpiry %p\n",
+    printf("[testssp] InitializeSecurityContext credential '%p' (%p) pcontext '%p' target name '%ls' contextReq 0x%x targetdatarep %u pInput (%d buffers), pnewcontext %p, pOutput (%d buffers), pContextAttr %p pexpiry %p\n",
         phCredential, phCredential ? phCredential->dwUpper : 0, phContext, pszTargetName, fContextReq, TargetDataRep, pInput->cBuffers, phNewContext, pOutput->cBuffers, pfContextAttr, ptsExpiry);
     if (!phContext) {
         SSPContext* ctx = new SSPContext();
