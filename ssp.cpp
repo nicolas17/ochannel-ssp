@@ -17,6 +17,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
+// A note on memory allocation:
+// If function A uses 'new Foo' and function B uses 'new Bar[42]',
+// and SSPI says the results of both A and B are freed with FreeContextBuffer,
+// there would be no implementation of FreeContextBuffer that would work
+// in both cases (delete vs delete[]). Therefore we would need to use plain C
+// malloc/free when FreeContextBuffer is involved.
+//
+// However, it looks like Windows's global FreeContextBuffer doesn't actually
+// call the security package's funcTable->FreeContextBuffer, it just calls
+// LocalFree(). In retrospect that makes sense, FreeContextBuffer doesn't have
+// enough information to know what package it has to forward the call to.
+//
+// In the particular case of EnumerateSecurityPackages, Windows does call the
+// package's funcTable->FreeContextBuffer to release the SecPkgInfo. For
+// consistency, and in case future Windows versions ever do make FreeContextBuffer
+// call the package's implementation, we have to use LocalAlloc instead of malloc.
+
 extern "C"
 SECURITY_STATUS SEC_ENTRY myEnumerateSecurityPackagesW(
     unsigned long *pcPackages,
@@ -25,12 +43,7 @@ SECURITY_STATUS SEC_ENTRY myEnumerateSecurityPackagesW(
     printf("[testssp] EnumerateSecurityPackagesW called\n");
     *pcPackages = 1;
 
-    // If function A uses 'new Foo' and function B uses 'new Bar[42]',
-    // and SSPI says the results of both A and B can be freed with FreeContextBuffer,
-    // there would be no implementation of FreeContextBuffer that would work
-    // in both cases (delete vs delete[]). Therefore we need to use plain C
-    // malloc/free when FreeContextBuffer is involved.
-    SecPkgInfoW* packages = (SecPkgInfoW*)malloc(sizeof(SecPkgInfo) * 1);
+    SecPkgInfoW* packages = (SecPkgInfoW*)LocalAlloc(0, sizeof(SecPkgInfo) * 1);
     packages[0].fCapabilities = SECPKG_FLAG_PRIVACY | SECPKG_FLAG_CLIENT_ONLY | SECPKG_FLAG_STREAM;
     packages[0].wVersion = 1;
     packages[0].wRPCID = SECPKG_ID_NONE;
@@ -47,7 +60,7 @@ extern "C"
 SECURITY_STATUS SEC_ENTRY myFreeContextBuffer(PVOID pvContextBuffer)
 {
     printf("[testssp] FreeContextBuffer(%p)\n", pvContextBuffer);
-    free(pvContextBuffer);
+    LocalFree(pvContextBuffer);
     return SEC_E_OK;
 }
 
@@ -211,7 +224,7 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
         printf("Output buffer type %d len %d\n", pOutput->pBuffers[0].BufferType, pOutput->pBuffers[0].cbBuffer);
         if (fContextReq & ISC_REQ_ALLOCATE_MEMORY) {
             int size = BIO_pending(ctx->m_network_bio);
-            char* data = (char*)malloc(size);
+            char* data = (char*)LocalAlloc(0, size);
             BIO_read(ctx->m_network_bio, data, size);
             pOutput->pBuffers[0].cbBuffer = size;
             pOutput->pBuffers[0].pvBuffer = data;
