@@ -222,20 +222,18 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
         ctx->do_connect();
 
         printf("Output buffer type %d len %d\n", pOutput->pBuffers[0].BufferType, pOutput->pBuffers[0].cbBuffer);
-        if (fContextReq & ISC_REQ_ALLOCATE_MEMORY) {
-            int size = BIO_pending(ctx->m_network_bio);
-            char* data = (char*)LocalAlloc(0, size);
-            BIO_read(ctx->m_network_bio, data, size);
-            pOutput->pBuffers[0].cbBuffer = size;
-            pOutput->pBuffers[0].pvBuffer = data;
-            pOutput->pBuffers[0].BufferType = SECBUFFER_TOKEN;
-            return SEC_I_CONTINUE_NEEDED;
-        } else {
+        if ((fContextReq & ISC_REQ_ALLOCATE_MEMORY) == 0) {
+            // client-provided buffers not supported yet
             return SEC_E_NOT_SUPPORTED;
         }
-
+        int size = BIO_pending(ctx->m_network_bio);
+        char* data = (char*)LocalAlloc(0, size);
+        BIO_read(ctx->m_network_bio, data, size);
+        pOutput->pBuffers[0].cbBuffer = size;
+        pOutput->pBuffers[0].pvBuffer = data;
+        pOutput->pBuffers[0].BufferType = SECBUFFER_TOKEN;
         *phNewContext = ctx->toHandle();
-        return SEC_E_OK;
+        return SEC_I_CONTINUE_NEEDED;
     }
     return SEC_E_INTERNAL_ERROR;
 }
