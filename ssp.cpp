@@ -17,6 +17,49 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void dumpBufferDesc(PSecBufferDesc desc) {
+    static const char* typeMap[] = {
+        "EMPTY", // 0
+        "DATA", // 1
+        "TOKEN", // 2
+        "PKG_PARAMS", // 3
+        "MISSING", // 4
+        "EXTRA", // 5
+        "STREAM_TRAILER", // 6
+        "STREAM_HEADER", // 7
+        "NEGOTIATION_INFO", // 8
+        "PADDING", // 9
+        "STREAM", // 10
+        "MECHLIST", // 11
+        "MECHLIST_SIGNATURE", // 12
+        "TARGET", // 13
+        "CHANNEL_BINDINGS", // 14
+        "CHANGE_PASS_RESPONSE", // 15
+        "TARGET_HOST", // 16
+        "ALERT", // 17
+        "APPLICATION_PROTOCOLS", // 18
+        "SRTP_PROTECTION_PROFILES", // 19
+        "SRTP_MASTER_KEY_IDENTIFIER", // 20
+        "TOKEN_BINDING", // 21
+        "PRESHARED_KEY", // 22
+        "PRESHARED_KEY_IDENTITY", // 23
+        "DTLS_MTU" // 24
+    };
+    if (!desc) {
+        printf("BufferDesc* is null\n");
+        return;
+    }
+    printf("BufferDesc with %d buffers\n", desc->cBuffers);
+    for (int i = 0; i < desc->cBuffers; ++i) {
+        const char* typeStr = "??";
+        unsigned long typeNum = desc->pBuffers[i].BufferType;
+        if (typeNum >= 0 && typeNum <= 24) {
+            typeStr = typeMap[typeNum];
+        }
+        printf(" Buffer[%d]: type %s (%d), size %u\n", i, typeStr, typeNum, desc->pBuffers[i].cbBuffer);
+    }
+    printf("End BufferDesc\n");
+}
 
 // A note on memory allocation:
 // If function A uses 'new Foo' and function B uses 'new Bar[42]',
@@ -208,8 +251,12 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
     _Out_       unsigned long* pfContextAttr,
     _Out_opt_   PTimeStamp     ptsExpiry
 ) {
-    printf("[testssp] InitializeSecurityContext credential '%p' (%p) pcontext '%p' target name '%ls' contextReq 0x%x targetdatarep %u pInput (%d buffers), pnewcontext %p, pOutput (%d buffers), pContextAttr %p pexpiry %p\n",
-        phCredential, phCredential ? phCredential->dwUpper : 0, phContext, pszTargetName, fContextReq, TargetDataRep, pInput->cBuffers, phNewContext, pOutput->cBuffers, pfContextAttr, ptsExpiry);
+    printf("[testssp] InitializeSecurityContext credential '%p' (%p) pcontext '%p' target name '%ls' contextReq 0x%x targetdatarep %u pnewcontext %p, pContextAttr %p pexpiry %p\n",
+        phCredential, phCredential ? phCredential->dwUpper : 0, phContext, pszTargetName, fContextReq, TargetDataRep, phNewContext, pfContextAttr, ptsExpiry);
+    printf("pInput: ");
+    dumpBufferDesc(pInput);
+    printf("pOutput: ");
+    dumpBufferDesc(pOutput);
 
     SSPContext* ctx = nullptr;
     if (phContext) {
