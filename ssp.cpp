@@ -270,6 +270,14 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
         ctx = new SSPContext(cred);
     }
 
+    // if we received some input, give it to OpenSSL.
+    // TODO we're assuming it's the *first* buffer if present,
+    // we should probably search by type instead.
+    if (pInput && pInput->cBuffers > 1 && pInput->pBuffers[0].BufferType == SECBUFFER_TOKEN) {
+        printf("We got some input, writing it to the OpenSSL BIO\n");
+        BIO_write(ctx->m_network_bio, pInput->pBuffers[0].pvBuffer, pInput->pBuffers[0].cbBuffer);
+    }
+
     bool handshakeFinished = ctx->do_connect();
 
     printf("Output buffer type %d len %d\n", pOutput->pBuffers[0].BufferType, pOutput->pBuffers[0].cbBuffer);
@@ -281,6 +289,7 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
 
     pOutput->pBuffers[0].BufferType = SECBUFFER_TOKEN;
     if (size) {
+        printf("There's data to send, returning it in an output buffer\n");
         char* data = (char*)LocalAlloc(0, size);
         BIO_read(ctx->m_network_bio, data, size);
         pOutput->pBuffers[0].cbBuffer = size;
@@ -292,8 +301,10 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
         *phNewContext = ctx->toHandle();
     }
     if (handshakeFinished) {
+        printf("Handshake finished, returning OK\n");
         return SEC_E_OK;
     } else {
+        printf("Handshake didn't finish, returning CONTINUE_NEEDED\n");
         return SEC_I_CONTINUE_NEEDED;
     }
 }
