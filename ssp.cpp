@@ -146,6 +146,7 @@ SSPContext::~SSPContext() {
 
     SSL_free(m_ssl);
 }
+// returns true when handshake is finished
 bool SSPContext::do_connect()
 {
     int retval;
@@ -212,30 +213,42 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
 
     SSPContext* ctx = nullptr;
     if (phContext) {
+        // this is a non-first call, so we reuse the context the client passed back to us
         ctx = SSPContext::fromHandle(phContext);
         if (!ctx) return SEC_E_INVALID_HANDLE;
     } else {
+        // this is the first call, so we create a new context
         SSPCredentials* cred = SSPCredentials::fromHandle(phCredential);
         if (!cred) return SEC_E_INVALID_HANDLE;
         ctx = new SSPContext(cred);
+    }
 
-        ctx->do_connect();
+    bool handshakeFinished = ctx->do_connect();
 
-        printf("Output buffer type %d len %d\n", pOutput->pBuffers[0].BufferType, pOutput->pBuffers[0].cbBuffer);
-        if ((fContextReq & ISC_REQ_ALLOCATE_MEMORY) == 0) {
-            // client-provided buffers not supported yet
-            return SEC_E_NOT_SUPPORTED;
-        }
-        int size = BIO_pending(ctx->m_network_bio);
+    printf("Output buffer type %d len %d\n", pOutput->pBuffers[0].BufferType, pOutput->pBuffers[0].cbBuffer);
+    if ((fContextReq & ISC_REQ_ALLOCATE_MEMORY) == 0) {
+        // client-provided buffers not supported yet
+        return SEC_E_NOT_SUPPORTED;
+    }
+    int size = BIO_pending(ctx->m_network_bio);
+
+    pOutput->pBuffers[0].BufferType = SECBUFFER_TOKEN;
+    if (size) {
         char* data = (char*)LocalAlloc(0, size);
         BIO_read(ctx->m_network_bio, data, size);
         pOutput->pBuffers[0].cbBuffer = size;
         pOutput->pBuffers[0].pvBuffer = data;
-        pOutput->pBuffers[0].BufferType = SECBUFFER_TOKEN;
+    }
+    if (!phContext) {
+        // if this is the first call, return the new token
+        if (!phNewContext) return SEC_E_INVALID_HANDLE;
         *phNewContext = ctx->toHandle();
+    }
+    if (handshakeFinished) {
+        return SEC_E_OK;
+    } else {
         return SEC_I_CONTINUE_NEEDED;
     }
-    return SEC_E_INTERNAL_ERROR;
 }
 
 extern "C"
