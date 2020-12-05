@@ -4,7 +4,7 @@
 
 cmake_minimum_required(VERSION 3.8)
 
-project(openssl-sspi CXX)
+project(ochannel-ssp CXX)
 
 find_package(OpenSSL REQUIRED)
 
