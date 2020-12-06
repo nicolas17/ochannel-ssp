@@ -52,13 +52,13 @@ void dumpBufferDesc(PSecBufferDesc desc) {
         return;
     }
     printf("BufferDesc with %d buffers\n", desc->cBuffers);
-    for (int i = 0; i < desc->cBuffers; ++i) {
+    for (unsigned long i = 0; i < desc->cBuffers; ++i) {
         const char* typeStr = "??";
         unsigned long typeNum = desc->pBuffers[i].BufferType;
         if (typeNum >= 0 && typeNum <= 24) {
             typeStr = typeMap[typeNum];
         }
-        printf(" Buffer[%d]: type %s (%d), size %u\n", i, typeStr, typeNum, desc->pBuffers[i].cbBuffer);
+        printf(" Buffer[%u]: type %s (%d), size %u\n", i, typeStr, typeNum, desc->pBuffers[i].cbBuffer);
     }
     printf("End BufferDesc\n");
 }
