@@ -258,6 +258,14 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
     printf("pOutput: ");
     dumpBufferDesc(pOutput);
 
+    // if we get a context requirement we don't support, bail out.
+    // instead of listing what we don't support, we list what we do support
+    // and fail if there is any flag outside of that
+    if (fContextReq & ~(ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM | ISC_REQ_CONFIDENTIALITY | ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT)) {
+        printf("Request had an unsupported context requirement\n");
+        return SEC_E_NOT_SUPPORTED;
+    }
+
     SSPContext* ctx = nullptr;
     if (phContext) {
         // this is a non-first call, so we reuse the context the client passed back to us
@@ -285,6 +293,9 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
         // client-provided buffers not supported yet
         return SEC_E_NOT_SUPPORTED;
     }
+    // allocated memory? yeah we can do that
+    *pfContextAttr |= ISC_RET_ALLOCATED_MEMORY;
+
     int size = BIO_pending(ctx->m_network_bio);
 
     pOutput->pBuffers[0].BufferType = SECBUFFER_TOKEN;
@@ -302,6 +313,7 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
     }
     if (handshakeFinished) {
         printf("Handshake finished, returning OK\n");
+        *pfContextAttr |= (ISC_RET_STREAM | ISC_RET_CONFIDENTIALITY | ISC_RET_REPLAY_DETECT | ISC_RET_SEQUENCE_DETECT);
         return SEC_E_OK;
     } else {
         printf("Handshake didn't finish, returning CONTINUE_NEEDED\n");
