@@ -10,16 +10,6 @@
 #include <windows.h>
 #include <security.h>
 
-CredHandle SSPCredentials::toHandle() const {
-    return { MAGIC, reinterpret_cast<UINT_PTR>(this) };
-}
-SSPCredentials* SSPCredentials::fromHandle(PCredHandle handle) {
-    if (handle->dwLower == MAGIC) {
-        return reinterpret_cast<SSPCredentials*>(handle->dwUpper);
-    } else {
-        return nullptr;
-    }
-}
 SSPCredentials::SSPCredentials() {
     m_ssl_ctx = SSL_CTX_new(TLS_client_method());
 }
@@ -28,16 +18,6 @@ SSPCredentials::~SSPCredentials() {
 }
 
 
-CtxtHandle SSPContext::toHandle() const {
-    return { MAGIC, reinterpret_cast<UINT_PTR>(this) };
-}
-SSPContext* SSPContext::fromHandle(PCtxtHandle handle) {
-    if (handle->dwLower == MAGIC) {
-        return reinterpret_cast<SSPContext*>(handle->dwUpper);
-    } else {
-        return nullptr;
-    }
-}
 SSPContext::SSPContext(SSPCredentials* cred) {
     m_ssl = SSL_new(cred->m_ssl_ctx);
 

@@ -14,14 +14,26 @@ typedef PSecHandle PCtxtHandle;
 
 #include <openssl/ssl.h>
 
+template<typename T>
+typename T::handleType toSecHandle(const T* ptr) {
+    return {T::MAGIC, reinterpret_cast<uintptr_t>(ptr)};
+}
+template<typename T>
+T* fromSecHandle(typename T::handleType* handle) {
+    if (handle->dwLower == T::MAGIC) {
+        return reinterpret_cast<T*>(handle->dwUpper);
+    } else {
+        return nullptr;
+    }
+}
+
 class SSPCredentials {
 public:
     static const unsigned long MAGIC = 0x5cb2715c;
+    typedef CredHandle handleType;
 
     SSPCredentials();
     ~SSPCredentials();
-    CredHandle toHandle() const;
-    static SSPCredentials* fromHandle(PCredHandle handle);
 
 private:
     // non-copyable
@@ -35,13 +47,11 @@ private:
 class SSPContext {
 public:
     static const unsigned long MAGIC = 0xbe80c313;
+    typedef CtxtHandle handleType;
 
     SSPContext(SSPCredentials* cred);
     ~SSPContext();
     bool do_connect();
-
-    CtxtHandle toHandle() const;
-    static SSPContext* fromHandle(PCtxtHandle handle);
 
 //private:
     // non-copyable

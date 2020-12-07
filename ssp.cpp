@@ -123,7 +123,7 @@ SECURITY_STATUS SEC_ENTRY myAcquireCredentialsHandleW(
 ) {
     printf("principal '%ls' package '%ls' credentialuse %lu logonid %p authdata %p getkeyfn %p getkeyarg %p pcredential %p pexpiry %p\n", pszPrincipal, pszPackage, fCredentialUse, pvLogonID, pAuthData, pGetKeyFn, pvGetKeyArgument, phCredential, ptsExpiry);
     SSPCredentials* cred = new SSPCredentials();
-    *phCredential = cred->toHandle();
+    *phCredential = toSecHandle(cred);
 
     return SEC_E_OK;
 }
@@ -132,7 +132,7 @@ extern "C"
 SECURITY_STATUS SEC_ENTRY myFreeCredentialsHandle(PCredHandle phCredential)
 {
     printf("[testssp] FreeCredentialsHandle(%p)\n", phCredential);
-    auto* cred = SSPCredentials::fromHandle(phCredential);
+    auto* cred = fromSecHandle<SSPCredentials>(phCredential);
     if (cred) {
         delete cred;
         return SEC_E_OK;
@@ -174,11 +174,11 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
     SSPContext* ctx = nullptr;
     if (phContext) {
         // this is a non-first call, so we reuse the context the client passed back to us
-        ctx = SSPContext::fromHandle(phContext);
+        ctx = fromSecHandle<SSPContext>(phContext);
         if (!ctx) return SEC_E_INVALID_HANDLE;
     } else {
         // this is the first call, so we create a new context
-        SSPCredentials* cred = SSPCredentials::fromHandle(phCredential);
+        SSPCredentials* cred = fromSecHandle<SSPCredentials>(phCredential);
         if (!cred) return SEC_E_INVALID_HANDLE;
         ctx = new SSPContext(cred);
     }
@@ -214,7 +214,7 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
     if (!phContext) {
         // if this is the first call, return the new token
         if (!phNewContext) return SEC_E_INVALID_HANDLE;
-        *phNewContext = ctx->toHandle();
+        *phNewContext = toSecHandle(ctx);
     }
     if (handshakeFinished) {
         printf("Handshake finished, returning OK\n");
@@ -231,7 +231,7 @@ SECURITY_STATUS SEC_ENTRY myDeleteSecurityContext(
     PCtxtHandle phContext
 ) {
     printf("[testssp] DeleteSecurityContext(%p)\n", phContext);
-    auto* ctx = SSPContext::fromHandle(phContext);
+    auto* ctx = fromSecHandle<SSPContext>(phContext);
     if (ctx) {
         delete ctx;
         return SEC_E_OK;
@@ -272,7 +272,7 @@ SECURITY_STATUS SEC_ENTRY myEncryptMessage(
     _In_    PSecBufferDesc      pMessage,
     _In_    unsigned long       MessageSeqNo
 ) {
-    auto* ctx = SSPContext::fromHandle(phContext);
+    auto* ctx = fromSecHandle<SSPContext>(phContext);
     if (!ctx) {
         return SEC_E_INVALID_HANDLE;
     }
