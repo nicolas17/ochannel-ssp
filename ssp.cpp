@@ -241,6 +241,29 @@ SECURITY_STATUS SEC_ENTRY myDeleteSecurityContext(
     }
 }
 
+extern "C"
+SECURITY_STATUS SEC_ENTRY myQueryContextAttributes(
+    _In_  PCtxtHandle   phContext,
+    _In_  unsigned long ulAttribute,
+    _Out_ void*         pBuffer
+) {
+    printf("We're being asked for context attribute #%u\n", ulAttribute);
+    if (ulAttribute == SECPKG_ATTR_STREAM_SIZES) {
+        auto* sizes = static_cast<SecPkgContext_StreamSizes*>(pBuffer);
+        sizes->cbHeader = 5;
+        sizes->cbMaximumMessage = 16384;
+        // The standards give a maximum encryption overhead of 1024 bytes.
+        // A comment in OpenSSL says "In practice the value is lower than this.
+        // The overhead is the maximum number of padding bytes(256) plus the MAC size."
+        // But we'll stick to 1024 to be sure for now.
+        sizes->cbTrailer = 1024;
+        sizes->cbBlockSize = 16;
+        sizes->cBuffers = 4;
+        return SEC_E_OK;
+    } else {
+        return SEC_E_NOT_SUPPORTED;
+    }
+}
 
 SecurityFunctionTableW g_functionTable = {
     SECURITY_SUPPORT_PROVIDER_INTERFACE_VERSION, // dwVersion
@@ -254,7 +277,7 @@ SecurityFunctionTableW g_functionTable = {
     nullptr, // CompleteAuthToken
     &myDeleteSecurityContext, // DeleteSecurityContext
     nullptr, // ApplyControlToken
-    nullptr, // QueryContextAttributesW
+    &myQueryContextAttributes, // QueryContextAttributesW
     nullptr, // ImpersonateSecurityContext
     nullptr, // RevertSecurityContext
     nullptr, // MakeSignature
