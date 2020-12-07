@@ -265,6 +265,50 @@ SECURITY_STATUS SEC_ENTRY myQueryContextAttributes(
     }
 }
 
+extern "C"
+SECURITY_STATUS SEC_ENTRY myEncryptMessage(
+    _In_    PCtxtHandle         phContext,
+    _In_    unsigned long       fQOP,
+    _In_    PSecBufferDesc      pMessage,
+    _In_    unsigned long       MessageSeqNo
+) {
+    auto* ctx = SSPContext::fromHandle(phContext);
+    if (!ctx) {
+        return SEC_E_INVALID_HANDLE;
+    }
+
+    if (fQOP != 0) {
+        return SEC_E_NOT_SUPPORTED;
+    }
+
+    printf("EncryptMessage called\n");
+    dumpBufferDesc(pMessage);
+
+    int retval = SSL_write(ctx->m_ssl, pMessage->pBuffers[1].pvBuffer, pMessage->pBuffers[1].cbBuffer);
+    printf("SSL_write returned %d\n", retval);
+    int pending = BIO_pending(ctx->m_network_bio);
+    printf("and wrote %d bytes to the output BIO\n", pending);
+
+    // we can't *really* rely on the buffers being contiguous
+    if (pending <= 5) { return SEC_E_INTERNAL_ERROR; }
+    retval = BIO_read(ctx->m_network_bio, pMessage->pBuffers[0].pvBuffer, pMessage->pBuffers[0].cbBuffer);
+    printf("Read %d bytes into header buffer\n", retval);
+    retval = BIO_read(ctx->m_network_bio, pMessage->pBuffers[1].pvBuffer, pMessage->pBuffers[1].cbBuffer);
+    printf("Read %d bytes into data buffer\n", retval);
+    if (retval < pMessage->pBuffers[1].cbBuffer) {
+        printf("Adjusting size of data buffer\n");
+        pMessage->pBuffers[1].cbBuffer = retval;
+    }
+    retval = BIO_read(ctx->m_network_bio, pMessage->pBuffers[2].pvBuffer, pMessage->pBuffers[2].cbBuffer);
+    printf("Read %d bytes into trailer buffer\n", retval);
+    if (retval < pMessage->pBuffers[2].cbBuffer) {
+        printf("Adjusting size of trailer buffer\n");
+        pMessage->pBuffers[2].cbBuffer = retval;
+    }
+
+    return SEC_E_OK;
+}
+
 SecurityFunctionTableW g_functionTable = {
     SECURITY_SUPPORT_PROVIDER_INTERFACE_VERSION, // dwVersion
     &myEnumerateSecurityPackagesW, // EnumerateSecurityPackagesW
@@ -284,14 +328,14 @@ SecurityFunctionTableW g_functionTable = {
     nullptr, // VerifySignature
     &myFreeContextBuffer, // FreeContextBuffer
     nullptr, // QuerySecurityPackageInfoW
-    nullptr, // Reserved3
+    &myEncryptMessage, // Reserved3, but actually EncryptMessage calls this
     nullptr, // Reserved4
     nullptr, // ExportSecurityContext
     nullptr, // ImportSecurityContextW
     nullptr, // AddCredentialsW
     nullptr, // Reserved8
     nullptr, // QuerySecurityContextToken
-    nullptr, // EncryptMessage
+    &myEncryptMessage, // EncryptMessage
     nullptr  // DecryptMessage
 };
 
