@@ -29,7 +29,7 @@ public:
             if (!m_funcList.count(f->getName())) return;
 
             auto retType = f->getReturnType();
-            m_stream << "MOCK_METHOD(" << retType.getAsString() << ", " << f->getNameAsString() << ", (";
+            m_stream << "MOCK_METHOD(" << retType.getAsString() << ", " << f->getName() << ", (";
             for (unsigned i=0; i<f->getNumParams(); ++i) {
                 if (i != 0) {
                     m_stream << ", ";
@@ -59,7 +59,7 @@ public:
             if (!m_funcList.count(f->getName())) return;
 
             auto retType = f->getReturnType();
-            m_stream << retType.getAsString() << " " << f->getNameAsString() << "(";
+            m_stream << retType.getAsString() << " " << f->getName() << "(";
             for (unsigned i=0; i<f->getNumParams(); ++i) {
                 if (i != 0) {
                     m_stream << ", ";
@@ -68,7 +68,7 @@ public:
                 std::string name = param->getIdentifier() ? param->getNameAsString() : ("arg" + std::to_string(i));
                 m_stream << param->getType().getAsString() << " " << name;
             }
-            m_stream << ") {\n    return g_mock->" << f->getNameAsString() << "(";
+            m_stream << ") {\n    return g_mock->" << f->getName() << "(";
             for (unsigned i=0; i<f->getNumParams(); ++i) {
                 if (i != 0) {
                     m_stream << ", ";
