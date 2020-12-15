@@ -8,6 +8,7 @@
 #include <clang/Tooling/CommonOptionsParser.h>
 #include <clang/ASTMatchers/ASTMatchers.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
+#include <llvm/Support/LineIterator.h>
 
 using namespace clang;
 using namespace clang::ast_matchers;
@@ -18,10 +19,15 @@ DeclarationMatcher funcMatcher = functionDecl().bind("func");
 
 class MockDeclPrinter : public MatchFinder::MatchCallback {
 public:
-    MockDeclPrinter(llvm::raw_ostream& stream): m_stream(stream) {}
+    MockDeclPrinter(llvm::raw_ostream& stream, const llvm::StringSet<>& funcList):
+        m_stream(stream),
+        m_funcList(funcList)
+    {}
 
     virtual void run(const MatchFinder::MatchResult &result) {
         if (const FunctionDecl *f = result.Nodes.getNodeAs<clang::FunctionDecl>("func")) {
+            if (!m_funcList.count(f->getName())) return;
+
             auto retType = f->getReturnType();
             m_stream << "MOCK_METHOD(" << retType.getAsString() << ", " << f->getNameAsString() << ", (";
             for (unsigned i=0; i<f->getNumParams(); ++i) {
@@ -37,14 +43,21 @@ public:
 
 private:
     llvm::raw_ostream& m_stream;
+    const llvm::StringSet<>& m_funcList;
 };
 
 class ThunkPrinter : public MatchFinder::MatchCallback {
 public:
-    ThunkPrinter(llvm::raw_ostream& stream): m_stream(stream) {}
+    ThunkPrinter(llvm::raw_ostream& stream, const llvm::StringSet<>& funcList):
+        m_stream(stream),
+        m_funcList(funcList)
+    {}
+
 
     virtual void run(const MatchFinder::MatchResult &result) {
         if (const FunctionDecl *f = result.Nodes.getNodeAs<clang::FunctionDecl>("func")) {
+            if (!m_funcList.count(f->getName())) return;
+
             auto retType = f->getReturnType();
             m_stream << retType.getAsString() << " " << f->getNameAsString() << "(";
             for (unsigned i=0; i<f->getNumParams(); ++i) {
@@ -70,11 +83,22 @@ public:
 
 private:
     llvm::raw_ostream& m_stream;
+    const llvm::StringSet<>& m_funcList;
 };
+
+llvm::StringSet<> readFunctionList(llvm::MemoryBuffer& mem)
+{
+    llvm::StringSet<> result;
+    for (llvm::line_iterator lines(mem); !lines.is_at_end(); ++lines) {
+        result.insert(*lines);
+    }
+    return result;
+}
 
 static cl::OptionCategory generatorCategory("generator options");
 static cl::opt<std::string> mockOutputFilename("out-mock", cl::desc("Output filename for mock method declarations"), cl::value_desc("filename"), cl::Required, cl::cat(generatorCategory));
 static cl::opt<std::string> thunkOutputFilename("out-thunks", cl::desc("Output filename for thunk function definitions"), cl::value_desc("filename"), cl::Required, cl::cat(generatorCategory));
+static cl::opt<std::string> funcInputFilename("funcs", cl::desc("File containing list of function names"), cl::value_desc("filename"), cl::Required, cl::cat(generatorCategory));
 
 int main(int argc, const char** argv)
 {
@@ -91,8 +115,16 @@ int main(int argc, const char** argv)
         llvm::errs() << "Couldn't open thunk output file: " << ec.message() << "\n";
         return 1;
     }
-    MockDeclPrinter mockPrinter(mockFile);
-    ThunkPrinter thunkPrinter(thunkFile);
+    auto funcListFileOrErr = llvm::MemoryBuffer::getFile(funcInputFilename);
+    ec = funcListFileOrErr.getError();
+    if (ec) {
+        llvm::errs() << "Couldn't open function list file: " << ec.message() << "\n";
+        return 1;
+    }
+    auto funcList = readFunctionList(*funcListFileOrErr.get());
+
+    MockDeclPrinter mockPrinter(mockFile, funcList);
+    ThunkPrinter thunkPrinter(thunkFile, funcList);
     MatchFinder finder;
     finder.addMatcher(funcMatcher, &mockPrinter);
     finder.addMatcher(funcMatcher, &thunkPrinter);
