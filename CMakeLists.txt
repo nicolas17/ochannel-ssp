@@ -10,5 +10,15 @@ find_package(OpenSSL REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 
+if(WIN32)
 add_library(testssp MODULE ssp.cpp context_types.cpp exports.def)
 target_link_libraries(testssp OpenSSL::SSL)
+endif()
+
+find_package(Clang)
+if (Clang_FOUND)
+    add_executable(genmock genmock.cpp)
+    target_compile_options(genmock PRIVATE -fno-rtti)
+    target_link_libraries(genmock clangTooling)
+    target_include_directories(genmock PRIVATE ${CLANG_INCLUDE_DIRS})
+endif()
