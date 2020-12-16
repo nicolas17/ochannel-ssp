@@ -1,0 +1,3 @@
+TLS_client_method
+SSL_CTX_new
+SSL_CTX_free

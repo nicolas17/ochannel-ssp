@@ -15,6 +15,10 @@ add_library(testssp MODULE ssp.cpp context_types.cpp exports.def)
 target_link_libraries(testssp OpenSSL::SSL)
 endif()
 
+find_package(GTest REQUIRED NO_MODULE)
+add_executable(mocktest mocktest.cpp mockssl.cpp)
+target_link_libraries(mocktest GTest::gmock_main)
+
 find_package(Clang)
 if (Clang_FOUND)
     add_executable(genmock genmock.cpp)
