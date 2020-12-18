@@ -19,6 +19,9 @@ find_package(GTest REQUIRED NO_MODULE)
 add_executable(mocktest mocktest.cpp mockssl.cpp)
 target_link_libraries(mocktest GTest::gmock_main)
 
+enable_testing()
+add_test(NAME mocktest COMMAND mocktest)
+
 find_package(Clang)
 if (Clang_FOUND)
     add_executable(genmock genmock.cpp)

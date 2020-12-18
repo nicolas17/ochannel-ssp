@@ -8,7 +8,7 @@ build-msvc2017-32:
     - cd build
     - cmake .. -G "NMake Makefiles" -DCMAKE_TOOLCHAIN_FILE=C:\GitLabRunner\vcpkg\scripts\buildsystems\vcpkg.cmake
     - nmake
-    - mocktest.exe
+    - ctest --verbose
 
 build-msvc2017-64:
   stage: build
@@ -20,4 +20,4 @@ build-msvc2017-64:
     - cd build
     - cmake .. -G "NMake Makefiles" -DCMAKE_TOOLCHAIN_FILE=C:\GitLabRunner\vcpkg\scripts\buildsystems\vcpkg.cmake
     - nmake
-    - mocktest.exe
+    - ctest --verbose
