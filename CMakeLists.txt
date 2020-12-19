@@ -16,7 +16,8 @@ target_link_libraries(testssp OpenSSL::SSL)
 endif()
 
 find_package(GTest REQUIRED NO_MODULE)
-add_executable(mocktest mocktest.cpp mockssl.cpp)
+add_executable(mocktest mocktest.cpp mockssl.cpp context_types.cpp ssp.cpp)
+target_compile_definitions(mocktest PRIVATE INIT_FUNCTION_NAME=OchannelInitSecurityInterface)
 target_link_libraries(mocktest GTest::gmock_main)
 
 enable_testing()

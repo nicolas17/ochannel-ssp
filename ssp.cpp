@@ -339,8 +339,12 @@ SecurityFunctionTableW g_functionTable = {
     nullptr  // DecryptMessage
 };
 
+#ifndef INIT_FUNCTION_NAME
+#define INIT_FUNCTION_NAME InitSecurityInterfaceW
+#endif
+
 extern "C"
-PSecurityFunctionTableW SEC_ENTRY InitSecurityInterfaceW() {
+PSecurityFunctionTableW SEC_ENTRY INIT_FUNCTION_NAME() {
     printf("[testssp] InitSecurityInterface called\n");
     return &g_functionTable;
 }

@@ -6,15 +6,17 @@
 
 #include "mockssl.h"
 
+#define WIN32_LEAN_AND_MEAN
+#define SECURITY_WIN32
+#include <windows.h>
+#include <sspi.h>
+
+extern "C"
+PSecurityFunctionTableW SEC_ENTRY OchannelInitSecurityInterface();
+
 using ::testing::_;
 using ::testing::Return;
 using ::testing::InSequence;
-
-void some_wrapper()
-{
-    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
-    SSL_CTX_free(ctx);
-}
 
 template<typename T>
 class DummyPointer {
@@ -30,7 +32,16 @@ public:
     T* ptr;
 };
 
-TEST(BasicTest, HelloWorld) {
+class Fixture : public ::testing::Test {
+protected:
+    PSecurityFunctionTableW funcTable;
+
+    Fixture() {
+        funcTable = OchannelInitSecurityInterface();
+    }
+};
+
+TEST_F(Fixture, HelloWorld) {
     OpenSSLMock openssl;
 
     DummyPointer<SSL_METHOD> method;
@@ -43,5 +54,7 @@ TEST(BasicTest, HelloWorld) {
         EXPECT_CALL(openssl, SSL_CTX_free(ctx.ptr));
     }
 
-    some_wrapper();
+    CredHandle cred;
+    funcTable->AcquireCredentialsHandleW(nullptr, nullptr, 0, nullptr, nullptr, nullptr, nullptr, &cred, nullptr);
+    funcTable->FreeCredentialsHandle(&cred);
 }
