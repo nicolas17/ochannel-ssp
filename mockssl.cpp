@@ -14,27 +14,67 @@ OpenSSLMock::~OpenSSLMock() {
     g_mock = nullptr;
 }
 
+
+bio_st* bio_st::create() {
+    return new bio_st{};
+}
+void bio_st::make_pair(BIO** bio1, BIO** bio2) {
+    BIO* b1 = bio_st::create();
+    BIO* b2 = bio_st::create();
+    b1->other_bio = b2;
+    b2->other_bio = b1;
+    *bio1 = b1;
+    *bio2 = b2;
+}
+int bio_st::up_ref() {
+    ++refcount;
+    return 1;
+}
+int bio_st::free() {
+    if (--refcount == 0) {
+        delete this;
+    }
+    return 1;
+}
+int bio_st::read(void* data, int dlen) {
+    size_t bytes_read = readbuf.copy((char*)data, dlen);
+    readbuf.erase(0, bytes_read);
+    return bytes_read;
+}
+int bio_st::write(const void* data, int dlen) {
+    other_bio->readbuf.append((const char*)data, dlen);
+    return dlen;
+}
+size_t bio_st::pending() {
+    return readbuf.length();
+}
+
 extern "C" {
 
-// generated from ssl.h with genmock
 int BIO_free(BIO * a) {
-    return g_mock->BIO_free(a);
+    return a->free();
 }
 int BIO_up_ref(BIO * a) {
-    return g_mock->BIO_up_ref(a);
+    return a->up_ref();
 }
 int BIO_read(BIO * b, void * data, int dlen) {
-    return g_mock->BIO_read(b, data, dlen);
+    return b->read(data, dlen);
 }
 int BIO_write(BIO * b, const void * data, int dlen) {
-    return g_mock->BIO_write(b, data, dlen);
+    return b->write(data, dlen);
 }
 long BIO_ctrl(BIO * bp, int cmd, long larg, void * parg) {
-    return g_mock->BIO_ctrl(bp, cmd, larg, parg);
+    switch (cmd) {
+    case BIO_CTRL_PENDING:
+        return bp->pending();
+    }
+    return 0;
 }
 int BIO_new_bio_pair(BIO ** bio1, size_t writebuf1, BIO ** bio2, size_t writebuf2) {
-    return g_mock->BIO_new_bio_pair(bio1, writebuf1, bio2, writebuf2);
+    BIO::make_pair(bio1, bio2);
+    return 0;
 }
+
 SSL_CTX * SSL_CTX_new(const SSL_METHOD * meth) {
     return g_mock->SSL_CTX_new(meth);
 }

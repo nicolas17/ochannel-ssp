@@ -13,13 +13,6 @@ public:
     OpenSSLMock();
     ~OpenSSLMock();
 
-    // generated from ssl.h with genmock
-    MOCK_METHOD(int, BIO_free, (BIO *));
-    MOCK_METHOD(int, BIO_up_ref, (BIO *));
-    MOCK_METHOD(int, BIO_read, (BIO *, void *, int));
-    MOCK_METHOD(int, BIO_write, (BIO *, const void *, int));
-    MOCK_METHOD(long, BIO_ctrl, (BIO *, int, long, void *));
-    MOCK_METHOD(int, BIO_new_bio_pair, (BIO **, size_t, BIO **, size_t));
     MOCK_METHOD(SSL_CTX *, SSL_CTX_new, (const SSL_METHOD *));
     MOCK_METHOD(void, SSL_CTX_free, (SSL_CTX *));
     MOCK_METHOD(void, SSL_set0_rbio, (SSL *, BIO *));
@@ -33,6 +26,20 @@ public:
     MOCK_METHOD(const SSL_METHOD *, TLS_client_method, ());
     MOCK_METHOD(void, SSL_set_connect_state, (SSL *));
 
+};
+struct bio_st {
+    int refcount;
+    std::string readbuf;
+    BIO* other_bio;
+
+    static BIO* create();
+    static void make_pair(BIO** bio1, BIO** bio2);
+
+    int up_ref();
+    int free();
+    int read(void* data, int dlen);
+    int write(const void* data, int dlen);
+    size_t pending();
 };
 
 #endif
