@@ -15,17 +15,23 @@ public:
 
     MOCK_METHOD(SSL_CTX *, SSL_CTX_new, (const SSL_METHOD *));
     MOCK_METHOD(void, SSL_CTX_free, (SSL_CTX *));
-    MOCK_METHOD(void, SSL_set0_rbio, (SSL *, BIO *));
-    MOCK_METHOD(void, SSL_set0_wbio, (SSL *, BIO *));
     MOCK_METHOD(SSL *, SSL_new, (SSL_CTX *));
     MOCK_METHOD(void, SSL_free, (SSL *));
-    MOCK_METHOD(int, SSL_connect, (SSL *));
-    MOCK_METHOD(int, SSL_read, (SSL *, void *, int));
-    MOCK_METHOD(int, SSL_write, (SSL *, const void *, int));
-    MOCK_METHOD(int, SSL_get_error, (const SSL *, int));
-    MOCK_METHOD(const SSL_METHOD *, TLS_client_method, ());
-    MOCK_METHOD(void, SSL_set_connect_state, (SSL *));
 
+};
+struct ssl_ctx_st {
+    ssl_ctx_st(const SSL_METHOD * meth);
+};
+struct ssl_st {
+    ssl_st(SSL_CTX * ctx);
+
+    MOCK_METHOD(void, set0_rbio, (BIO *));
+    MOCK_METHOD(void, set0_wbio, (BIO *));
+    MOCK_METHOD(int, connect, ());
+    MOCK_METHOD(int, read, (void *, int));
+    MOCK_METHOD(int, write, (const void *, int));
+    MOCK_METHOD(int, get_error, (int), (const));
+    MOCK_METHOD(void, set_connect_state, ());
 };
 struct bio_st {
     int refcount;

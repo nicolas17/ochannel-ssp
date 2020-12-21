@@ -49,6 +49,13 @@ size_t bio_st::pending() {
     return readbuf.length();
 }
 
+ssl_ctx_st::ssl_ctx_st(const SSL_METHOD*)
+{
+}
+ssl_st::ssl_st(SSL_CTX* ctx)
+{
+}
+
 extern "C" {
 
 int BIO_free(BIO * a) {
@@ -82,10 +89,10 @@ void SSL_CTX_free(SSL_CTX * arg0) {
     return g_mock->SSL_CTX_free(arg0);
 }
 void SSL_set0_rbio(SSL * s, BIO * rbio) {
-    return g_mock->SSL_set0_rbio(s, rbio);
+    s->set0_rbio(rbio);
 }
 void SSL_set0_wbio(SSL * s, BIO * wbio) {
-    return g_mock->SSL_set0_wbio(s, wbio);
+    s->set0_wbio(wbio);
 }
 SSL * SSL_new(SSL_CTX * ctx) {
     return g_mock->SSL_new(ctx);
@@ -94,22 +101,22 @@ void SSL_free(SSL * ssl) {
     return g_mock->SSL_free(ssl);
 }
 int SSL_connect(SSL * ssl) {
-    return g_mock->SSL_connect(ssl);
+    return ssl->connect();
 }
 int SSL_read(SSL * ssl, void * buf, int num) {
-    return g_mock->SSL_read(ssl, buf, num);
+    return ssl->read(buf, num);
 }
 int SSL_write(SSL * ssl, const void * buf, int num) {
-    return g_mock->SSL_write(ssl, buf, num);
+    return ssl->write(buf, num);
 }
 int SSL_get_error(const SSL * s, int ret_code) {
-    return g_mock->SSL_get_error(s, ret_code);
+    return s->get_error(ret_code);
 }
 const SSL_METHOD * TLS_client_method() {
-    return g_mock->TLS_client_method();
+    return nullptr;
 }
 void SSL_set_connect_state(SSL * s) {
-    return g_mock->SSL_set_connect_state(s);
+    s->set_connect_state();
 }
 
 }

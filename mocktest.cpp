@@ -44,17 +44,12 @@ protected:
 TEST_F(Fixture, HelloWorld) {
     OpenSSLMock openssl;
 
-    DummyPointer<SSL_METHOD> method;
-    DummyPointer<SSL_CTX> ctx;
-    {
-        InSequence s;
-        EXPECT_CALL(openssl, TLS_client_method()).WillOnce(Return(method.ptr));
-
-        EXPECT_CALL(openssl, SSL_CTX_new(method.ptr)).WillOnce(Return(ctx.ptr));
-        EXPECT_CALL(openssl, SSL_CTX_free(ctx.ptr));
-    }
+    SSL_CTX* ctx;
+    EXPECT_CALL(openssl, SSL_CTX_new(_)).WillOnce([&](auto meth) { return ctx = new ssl_ctx_st(meth); });
 
     CredHandle cred;
     funcTable->AcquireCredentialsHandleW(nullptr, nullptr, 0, nullptr, nullptr, nullptr, nullptr, &cred, nullptr);
+
+    EXPECT_CALL(openssl, SSL_CTX_free(ctx));
     funcTable->FreeCredentialsHandle(&cred);
 }
