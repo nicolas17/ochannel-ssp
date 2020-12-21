@@ -82,23 +82,26 @@ int BIO_new_bio_pair(BIO ** bio1, size_t writebuf1, BIO ** bio2, size_t writebuf
     return 0;
 }
 
+const SSL_METHOD * TLS_client_method() {
+    return nullptr;
+}
 SSL_CTX * SSL_CTX_new(const SSL_METHOD * meth) {
     return g_mock->SSL_CTX_new(meth);
 }
 void SSL_CTX_free(SSL_CTX * arg0) {
     return g_mock->SSL_CTX_free(arg0);
 }
-void SSL_set0_rbio(SSL * s, BIO * rbio) {
-    s->set0_rbio(rbio);
-}
-void SSL_set0_wbio(SSL * s, BIO * wbio) {
-    s->set0_wbio(wbio);
-}
 SSL * SSL_new(SSL_CTX * ctx) {
     return g_mock->SSL_new(ctx);
 }
 void SSL_free(SSL * ssl) {
     return g_mock->SSL_free(ssl);
+}
+void SSL_set0_rbio(SSL * s, BIO * rbio) {
+    s->set0_rbio(rbio);
+}
+void SSL_set0_wbio(SSL * s, BIO * wbio) {
+    s->set0_wbio(wbio);
 }
 int SSL_connect(SSL * ssl) {
     return ssl->connect();
@@ -111,9 +114,6 @@ int SSL_write(SSL * ssl, const void * buf, int num) {
 }
 int SSL_get_error(const SSL * s, int ret_code) {
     return s->get_error(ret_code);
-}
-const SSL_METHOD * TLS_client_method() {
-    return nullptr;
 }
 void SSL_set_connect_state(SSL * s) {
     s->set_connect_state();
