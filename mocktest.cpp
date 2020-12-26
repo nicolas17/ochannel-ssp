@@ -18,20 +18,6 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::InSequence;
 
-template<typename T>
-class DummyPointer {
-public:
-    DummyPointer() {
-        ptr = (T*)malloc(1);
-    }
-    ~DummyPointer() {
-        free((void*)ptr);
-    }
-    operator T*() { return ptr; }
-
-    T* ptr;
-};
-
 class Fixture : public ::testing::Test {
 protected:
     PSecurityFunctionTableW funcTable;
