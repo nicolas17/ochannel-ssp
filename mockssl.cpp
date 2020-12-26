@@ -51,7 +51,7 @@ size_t bio_st::pending() {
 // convenience methods (no 1:1 map to BIO_* functions)
 std::string bio_st::readstr() {
     std::string result;
-    std::swap(result, other_bio->readbuf);
+    std::swap(result, readbuf);
     return result;
 }
 void bio_st::writestr(const std::string& s) {
