@@ -78,15 +78,10 @@ TEST_F(Fixture, InitContext) {
     CtxtHandle sspCtx{};
     SecBufferDesc outputBufs{};
     SSL* sslObject = new ssl_st(ctx);
-    BIO* internalBio{};
     EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(sslObject));
     EXPECT_CALL(openssl, SSL_free(_)).WillOnce([](SSL* s) { delete s; });
-    EXPECT_CALL(*sslObject, set0_wbio(_)).WillOnce([&](BIO* b) {
-        internalBio = b;
-    });
-    EXPECT_CALL(*sslObject, set0_rbio(_));
     EXPECT_CALL(*sslObject, connect()).WillOnce([&] {
-        internalBio->writestr("[starthandshake]");
+        sslObject->wbio->writestr("[starthandshake]");
         return -1;
     });
 

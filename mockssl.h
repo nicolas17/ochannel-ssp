@@ -25,13 +25,19 @@ struct ssl_ctx_st {
 struct ssl_st {
     ssl_st(SSL_CTX * ctx);
 
-    MOCK_METHOD(void, set0_rbio, (BIO *));
-    MOCK_METHOD(void, set0_wbio, (BIO *));
+    void set0_rbio(BIO* b) {
+        rbio = b;
+    }
+    void set0_wbio(BIO* b) {
+        wbio = b;
+    }
     MOCK_METHOD(int, connect, ());
     MOCK_METHOD(int, read, (void *, int));
     MOCK_METHOD(int, write, (const void *, int));
     MOCK_METHOD(int, get_error, (int), (const));
     MOCK_METHOD(void, set_connect_state, ());
+
+    BIO *rbio, *wbio;
 };
 struct bio_st {
     int refcount;
