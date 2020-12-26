@@ -77,11 +77,10 @@ TEST_F(Fixture, InitContext) {
 
     CtxtHandle sspCtx{};
     SecBufferDesc outputBufs{};
-    SSL* sslObject = new ssl_st(ctx);
-    EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(sslObject));
-    EXPECT_CALL(openssl, SSL_free(_)).WillOnce([](SSL* s) { delete s; });
-    EXPECT_CALL(*sslObject, connect()).WillOnce([&] {
-        sslObject->wbio->writestr("[starthandshake]");
+    SSL sslObject(ctx);
+    EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(&sslObject));
+    EXPECT_CALL(sslObject, connect()).WillOnce([&] {
+        sslObject.wbio->writestr("[starthandshake]");
         return -1;
     });
 
@@ -106,6 +105,8 @@ TEST_F(Fixture, InitContext) {
         nullptr     // ptsExpiry
     );
     EXPECT_EQ(outputBufs.pBuffers[0], "[starthandshake]");
+
+    EXPECT_CALL(openssl, SSL_free(&sslObject));
     funcTable->DeleteSecurityContext(&sspCtx);
 
     EXPECT_CALL(openssl, SSL_CTX_free(ctx));
