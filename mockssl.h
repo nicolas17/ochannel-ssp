@@ -46,6 +46,10 @@ struct bio_st {
     int read(void* data, int dlen);
     int write(const void* data, int dlen);
     size_t pending();
+
+    // convenience methods (no 1:1 map to BIO_* functions)
+    std::string readstr();
+    void writestr(const std::string& s);
 };
 
 #endif

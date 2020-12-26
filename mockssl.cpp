@@ -48,6 +48,16 @@ int bio_st::write(const void* data, int dlen) {
 size_t bio_st::pending() {
     return readbuf.length();
 }
+// convenience methods (no 1:1 map to BIO_* functions)
+std::string bio_st::readstr() {
+    std::string result;
+    std::swap(result, other_bio->readbuf);
+    return result;
+}
+void bio_st::writestr(const std::string& s) {
+    write(s.data(), s.length());
+}
+
 
 ssl_ctx_st::ssl_ctx_st(const SSL_METHOD*)
 {

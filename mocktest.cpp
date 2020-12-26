@@ -41,7 +41,7 @@ protected:
     }
 };
 
-TEST_F(Fixture, HelloWorld) {
+TEST_F(Fixture, CredentialsHandleCreate) {
     OpenSSLMock openssl;
 
     SSL_CTX* ctx;
@@ -52,4 +52,67 @@ TEST_F(Fixture, HelloWorld) {
 
     EXPECT_CALL(openssl, SSL_CTX_free(ctx));
     funcTable->FreeCredentialsHandle(&cred);
+}
+
+std::ostream& operator<<(std::ostream& os, const SecBuffer& buf) {
+    if (buf.pvBuffer == nullptr) {
+        return os << "[null buffer]";
+    } else {
+        return os << "SecBuffer len " << buf.cbBuffer << " content '" << std::string((const char*)buf.pvBuffer, buf.cbBuffer) << "'";
+    }
+}
+
+bool operator==(const SecBuffer& buf, const std::string& s) {
+    return buf.pvBuffer != nullptr && std::string((const char*)buf.pvBuffer, buf.cbBuffer) == s;
+}
+
+TEST_F(Fixture, InitContext) {
+    OpenSSLMock openssl;
+
+    SSL_CTX* ctx;
+    EXPECT_CALL(openssl, SSL_CTX_new(_)).WillOnce([&](auto meth) { return ctx = new ssl_ctx_st(meth); });
+
+    CredHandle sspCred;
+    funcTable->AcquireCredentialsHandleW(nullptr, nullptr, 0, nullptr, nullptr, nullptr, nullptr, &sspCred, nullptr);
+
+    CtxtHandle sspCtx{};
+    SecBufferDesc outputBufs{};
+    SSL* sslObject = new ssl_st(ctx);
+    BIO* internalBio{};
+    EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(sslObject));
+    EXPECT_CALL(openssl, SSL_free(_)).WillOnce([](SSL* s) { delete s; });
+    EXPECT_CALL(*sslObject, set0_wbio(_)).WillOnce([&](BIO* b) {
+        internalBio = b;
+    });
+    EXPECT_CALL(*sslObject, set0_rbio(_));
+    EXPECT_CALL(*sslObject, connect()).WillOnce([&] {
+        internalBio->writestr("[starthandshake]");
+        return -1;
+    });
+
+    SecBuffer outputBuf{};
+    outputBufs.ulVersion = SECBUFFER_VERSION;
+    outputBufs.cBuffers = 1;
+    outputBufs.pBuffers = &outputBuf;
+
+    unsigned long contextAttr;
+    int retval = funcTable->InitializeSecurityContextW(
+        &sspCred,   // phCredential
+        nullptr,    // phContext
+        nullptr,    // pszTargetName
+        ISC_REQ_ALLOCATE_MEMORY, // fContextReq
+        0,          // Reserved1
+        0,          // TargetDataRep
+        nullptr,    // pInput
+        0,          // Reserved2
+        &sspCtx,    // phNewContext
+        &outputBufs,// pOutput
+        &contextAttr, // pfContextAttr
+        nullptr     // ptsExpiry
+    );
+    EXPECT_EQ(outputBufs.pBuffers[0], "[starthandshake]");
+    funcTable->DeleteSecurityContext(&sspCtx);
+
+    EXPECT_CALL(openssl, SSL_CTX_free(ctx));
+    funcTable->FreeCredentialsHandle(&sspCred);
 }
