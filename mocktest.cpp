@@ -73,11 +73,6 @@ TEST_F(FixtureWithCredHandle, InitContext) {
     CtxtHandle sspCtx{};
     SSL sslObject(opensslCtx);
     EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(&sslObject));
-    EXPECT_CALL(sslObject, connect()).WillOnce([&] {
-        sslObject.wbio->writestr("[ClientHello]");
-        sslObject.last_error = SSL_ERROR_WANT_READ;
-        return -1;
-    });
 
     SecBufferDesc outputBufs{};
     SecBuffer outputBuf{};
@@ -86,6 +81,13 @@ TEST_F(FixtureWithCredHandle, InitContext) {
     outputBufs.pBuffers = &outputBuf;
 
     unsigned long contextAttr;
+
+    // first call, creates context and returns first output buffer
+    EXPECT_CALL(sslObject, connect()).WillOnce([&] {
+        sslObject.wbio->writestr("[ClientHello]");
+        sslObject.last_error = SSL_ERROR_WANT_READ;
+        return -1;
+    });
     int retval = funcTable->InitializeSecurityContextW(
         &sspCred,       // phCredential
         nullptr,        // phContext
@@ -116,6 +118,7 @@ TEST_F(FixtureWithCredHandle, InitContext) {
     inputBuf[0].pvBuffer = "[ServerHello]";
     inputBuf[1].BufferType = SECBUFFER_EMPTY;
 
+    // second call, we give it the existing context and the input buffer
     std::string tmpstr;
     EXPECT_CALL(sslObject, connect()).WillOnce([&] {
         tmpstr = sslObject.rbio->readstr();
@@ -140,6 +143,32 @@ TEST_F(FixtureWithCredHandle, InitContext) {
     ASSERT_EQ(tmpstr, "[ServerHello]");
     ASSERT_EQ(outputBufs.pBuffers[0], "[ClientKeyExchange]");
     ASSERT_EQ(retval, SEC_I_CONTINUE_NEEDED);
+
+    // final call, handshake complete
+    inputBuf[0].cbBuffer = 10;
+    inputBuf[0].pvBuffer = "[Finished]";
+
+    EXPECT_CALL(sslObject, connect()).WillOnce([&] {
+        tmpstr = sslObject.rbio->readstr();
+        sslObject.last_error = 0;
+        return 1;
+    });
+    retval = funcTable->InitializeSecurityContextW(
+        &sspCred,       // phCredential
+        &sspCtx,        // phContext
+        nullptr,        // pszTargetName
+        ISC_REQ_ALLOCATE_MEMORY, // fContextReq
+        0,              // Reserved1
+        0,              // TargetDataRep
+        &inputBufs,     // pInput
+        0,              // Reserved2
+        nullptr,        // phNewContext
+        &outputBufs,    // pOutput
+        &contextAttr,   // pfContextAttr
+        nullptr         // ptsExpiry
+    );
+    ASSERT_EQ(tmpstr, "[Finished]");
+    ASSERT_EQ(retval, SEC_E_OK);
 
     EXPECT_CALL(openssl, SSL_free(&sslObject));
     funcTable->DeleteSecurityContext(&sspCtx);
