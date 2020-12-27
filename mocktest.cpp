@@ -101,6 +101,7 @@ TEST_F(FixtureWithCredHandle, InitContext) {
         nullptr         // ptsExpiry
     );
     ASSERT_EQ(outputBufs.pBuffers[0], "[ClientHello]");
+    ASSERT_EQ(outputBufs.pBuffers[0].BufferType, SECBUFFER_TOKEN);
     ASSERT_EQ(retval, SEC_I_CONTINUE_NEEDED);
     funcTable->FreeContextBuffer(outputBufs.pBuffers[0].pvBuffer);
     outputBufs.pBuffers[0].pvBuffer = nullptr;
