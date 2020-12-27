@@ -52,17 +52,26 @@ bool operator==(const SecBuffer& buf, const std::string& s) {
     return buf.pvBuffer != nullptr && std::string((const char*)buf.pvBuffer, buf.cbBuffer) == s;
 }
 
-TEST_F(Fixture, InitContext) {
+class FixtureWithCredHandle : public Fixture {
+protected:
     OpenSSLMock openssl;
-
-    SSL_CTX* ctx;
-    EXPECT_CALL(openssl, SSL_CTX_new(_)).WillOnce([&](auto meth) { return ctx = new ssl_ctx_st(meth); });
-
+    SSL_CTX* opensslCtx;
     CredHandle sspCred;
-    funcTable->AcquireCredentialsHandleW(nullptr, nullptr, 0, nullptr, nullptr, nullptr, nullptr, &sspCred, nullptr);
+
+    void SetUp() {
+        EXPECT_CALL(openssl, SSL_CTX_new(_)).WillOnce([&](auto meth) { return opensslCtx = new ssl_ctx_st(meth); });
+        funcTable->AcquireCredentialsHandleW(nullptr, nullptr, 0, nullptr, nullptr, nullptr, nullptr, &sspCred, nullptr);
+    }
+    void TearDown() {
+        EXPECT_CALL(openssl, SSL_CTX_free(opensslCtx));
+        funcTable->FreeCredentialsHandle(&sspCred);
+    }
+};
+
+TEST_F(FixtureWithCredHandle, InitContext) {
 
     CtxtHandle sspCtx{};
-    SSL sslObject(ctx);
+    SSL sslObject(opensslCtx);
     EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(&sslObject));
     EXPECT_CALL(sslObject, connect()).WillOnce([&] {
         sslObject.wbio->writestr("[ClientHello]");
@@ -131,7 +140,4 @@ TEST_F(Fixture, InitContext) {
 
     EXPECT_CALL(openssl, SSL_free(&sslObject));
     funcTable->DeleteSecurityContext(&sspCtx);
-
-    EXPECT_CALL(openssl, SSL_CTX_free(ctx));
-    funcTable->FreeCredentialsHandle(&sspCred);
 }
