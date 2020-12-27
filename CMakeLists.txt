@@ -22,11 +22,3 @@ target_link_libraries(mocktest GTest::gmock_main)
 
 enable_testing()
 add_test(NAME mocktest COMMAND mocktest)
-
-find_package(Clang)
-if (Clang_FOUND)
-    add_executable(genmock genmock.cpp)
-    target_compile_options(genmock PRIVATE -fno-rtti)
-    target_link_libraries(genmock clangTooling)
-    target_include_directories(genmock PRIVATE ${CLANG_INCLUDE_DIRS})
-endif()
