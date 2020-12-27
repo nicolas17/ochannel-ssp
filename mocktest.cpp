@@ -87,18 +87,18 @@ TEST_F(FixtureWithCredHandle, InitContext) {
 
     unsigned long contextAttr;
     int retval = funcTable->InitializeSecurityContextW(
-        &sspCred,   // phCredential
-        nullptr,    // phContext
-        nullptr,    // pszTargetName
+        &sspCred,       // phCredential
+        nullptr,        // phContext
+        nullptr,        // pszTargetName
         ISC_REQ_ALLOCATE_MEMORY, // fContextReq
-        0,          // Reserved1
-        0,          // TargetDataRep
-        nullptr,    // pInput
-        0,          // Reserved2
-        &sspCtx,    // phNewContext
-        &outputBufs,// pOutput
-        &contextAttr, // pfContextAttr
-        nullptr     // ptsExpiry
+        0,              // Reserved1
+        0,              // TargetDataRep
+        nullptr,        // pInput
+        0,              // Reserved2
+        &sspCtx,        // phNewContext
+        &outputBufs,    // pOutput
+        &contextAttr,   // pfContextAttr
+        nullptr         // ptsExpiry
     );
     ASSERT_EQ(outputBufs.pBuffers[0], "[ClientHello]");
     ASSERT_EQ(retval, SEC_I_CONTINUE_NEEDED);
@@ -123,18 +123,18 @@ TEST_F(FixtureWithCredHandle, InitContext) {
         return -1;
     });
     retval = funcTable->InitializeSecurityContextW(
-        &sspCred,   // phCredential
-        &sspCtx,    // phContext
-        nullptr,    // pszTargetName
+        &sspCred,       // phCredential
+        &sspCtx,        // phContext
+        nullptr,        // pszTargetName
         ISC_REQ_ALLOCATE_MEMORY, // fContextReq
-        0,          // Reserved1
-        0,          // TargetDataRep
-        &inputBufs, // pInput
-        0,          // Reserved2
-        nullptr,    // phNewContext
-        &outputBufs,// pOutput
-        &contextAttr, // pfContextAttr
-        nullptr     // ptsExpiry
+        0,              // Reserved1
+        0,              // TargetDataRep
+        &inputBufs,     // pInput
+        0,              // Reserved2
+        nullptr,        // phNewContext
+        &outputBufs,    // pOutput
+        &contextAttr,   // pfContextAttr
+        nullptr         // ptsExpiry
     );
     ASSERT_EQ(tmpstr, "[ServerHello]");
     ASSERT_EQ(outputBufs.pBuffers[0], "[ClientKeyExchange]");
