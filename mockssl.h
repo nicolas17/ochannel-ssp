@@ -31,13 +31,17 @@ struct ssl_st {
     void set0_wbio(BIO* b) {
         wbio = b;
     }
+    int get_error(int retval) const {
+        return last_error;
+    }
+
     MOCK_METHOD(int, connect, ());
     MOCK_METHOD(int, read, (void *, int));
     MOCK_METHOD(int, write, (const void *, int));
-    MOCK_METHOD(int, get_error, (int), (const));
     MOCK_METHOD(void, set_connect_state, ());
 
     BIO *rbio, *wbio;
+    int last_error;
 };
 struct bio_st {
     int refcount;

@@ -75,6 +75,7 @@ TEST_F(FixtureWithCredHandle, InitContext) {
     EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(&sslObject));
     EXPECT_CALL(sslObject, connect()).WillOnce([&] {
         sslObject.wbio->writestr("[ClientHello]");
+        sslObject.last_error = SSL_ERROR_WANT_READ;
         return -1;
     });
 
@@ -118,6 +119,7 @@ TEST_F(FixtureWithCredHandle, InitContext) {
     EXPECT_CALL(sslObject, connect()).WillOnce([&] {
         tmpstr = sslObject.rbio->readstr();
         sslObject.wbio->writestr("[ClientKeyExchange]");
+        sslObject.last_error = SSL_ERROR_WANT_READ;
         return -1;
     });
     retval = funcTable->InitializeSecurityContextW(
