@@ -163,6 +163,8 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
     printf("pOutput: ");
     dumpBufferDesc(pOutput);
 
+    unsigned long contextAttr = ISC_RET_STREAM | ISC_RET_CONFIDENTIALITY | ISC_RET_REPLAY_DETECT | ISC_RET_SEQUENCE_DETECT;
+
     // if we get a context requirement we don't support, bail out.
     // instead of listing what we don't support, we list what we do support
     // and fail if there is any flag outside of that
@@ -199,7 +201,7 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
         return SEC_E_NOT_SUPPORTED;
     }
     // allocated memory? yeah we can do that
-    *pfContextAttr |= ISC_RET_ALLOCATED_MEMORY;
+    contextAttr |= ISC_RET_ALLOCATED_MEMORY;
 
     int size = BIO_pending(ctx->m_network_bio);
 
@@ -216,9 +218,11 @@ SECURITY_STATUS SEC_ENTRY myInitializeSecurityContextW(
         if (!phNewContext) return SEC_E_INVALID_HANDLE;
         *phNewContext = toSecHandle(ctx);
     }
+    if (pfContextAttr) {
+        *pfContextAttr = contextAttr;
+    }
     if (handshakeFinished) {
         printf("Handshake finished, returning OK\n");
-        *pfContextAttr |= (ISC_RET_STREAM | ISC_RET_CONFIDENTIALITY | ISC_RET_REPLAY_DETECT | ISC_RET_SEQUENCE_DETECT);
         return SEC_E_OK;
     } else {
         printf("Handshake didn't finish, returning CONTINUE_NEEDED\n");

@@ -80,6 +80,8 @@ TEST_F(FixtureWithCredHandle, InitContext) {
     outputBufs.cBuffers = 1;
     outputBufs.pBuffers = &outputBuf;
 
+    const unsigned long REQ_FLAGS = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
+    const unsigned long RET_FLAGS = ISC_RET_SEQUENCE_DETECT | ISC_RET_REPLAY_DETECT | ISC_RET_CONFIDENTIALITY | ISC_RET_ALLOCATED_MEMORY | ISC_RET_STREAM;
     unsigned long contextAttr;
 
     // first call, creates context and returns first output buffer
@@ -92,7 +94,7 @@ TEST_F(FixtureWithCredHandle, InitContext) {
         &sspCred,       // phCredential
         nullptr,        // phContext
         nullptr,        // pszTargetName
-        ISC_REQ_ALLOCATE_MEMORY, // fContextReq
+        REQ_FLAGS,      // fContextReq
         0,              // Reserved1
         0,              // TargetDataRep
         nullptr,        // pInput
@@ -130,7 +132,7 @@ TEST_F(FixtureWithCredHandle, InitContext) {
         &sspCred,       // phCredential
         &sspCtx,        // phContext
         nullptr,        // pszTargetName
-        ISC_REQ_ALLOCATE_MEMORY, // fContextReq
+        REQ_FLAGS,      // fContextReq
         0,              // Reserved1
         0,              // TargetDataRep
         &inputBufs,     // pInput
@@ -157,7 +159,7 @@ TEST_F(FixtureWithCredHandle, InitContext) {
         &sspCred,       // phCredential
         &sspCtx,        // phContext
         nullptr,        // pszTargetName
-        ISC_REQ_ALLOCATE_MEMORY, // fContextReq
+        REQ_FLAGS,      // fContextReq
         0,              // Reserved1
         0,              // TargetDataRep
         &inputBufs,     // pInput
@@ -169,6 +171,7 @@ TEST_F(FixtureWithCredHandle, InitContext) {
     );
     ASSERT_EQ(tmpstr, "[Finished]");
     ASSERT_EQ(retval, SEC_E_OK);
+    ASSERT_EQ(contextAttr, RET_FLAGS);
 
     EXPECT_CALL(openssl, SSL_free(&sslObject));
     funcTable->DeleteSecurityContext(&sspCtx);
