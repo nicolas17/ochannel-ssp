@@ -52,6 +52,24 @@ bool operator==(const SecBuffer& buf, const std::string& s) {
     return buf.pvBuffer != nullptr && std::string((const char*)buf.pvBuffer, buf.cbBuffer) == s;
 }
 
+// usually called with a string literal; be careful not to use it as an output buffer
+// since literals are const
+void initSecBufferLiteral(SecBuffer* buf, int type, const char* s) {
+    buf->BufferType = type;
+    buf->cbBuffer = strlen(s);
+    buf->pvBuffer = (void*)s;
+}
+void initSecBuffer(SecBuffer* buf, int type, char* s, size_t len) {
+    buf->BufferType = type;
+    buf->cbBuffer = len;
+    buf->pvBuffer = s;
+}
+void initSecBufferDesc(SecBufferDesc* desc, SecBuffer* bufArray, size_t count) {
+    desc->ulVersion = SECBUFFER_VERSION;
+    desc->cBuffers = count;
+    desc->pBuffers = bufArray;
+}
+
 class FixtureWithCredHandle : public Fixture {
 protected:
     OpenSSLMock openssl;
@@ -74,11 +92,9 @@ TEST_F(FixtureWithCredHandle, InitContext) {
     SSL sslObject(opensslCtx);
     EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(&sslObject));
 
-    SecBufferDesc outputBufs{};
+    SecBufferDesc outputBufDesc{};
     SecBuffer outputBuf{};
-    outputBufs.ulVersion = SECBUFFER_VERSION;
-    outputBufs.cBuffers = 1;
-    outputBufs.pBuffers = &outputBuf;
+    initSecBufferDesc(&outputBufDesc, &outputBuf, 1);
 
     const unsigned long REQ_FLAGS = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
     const unsigned long RET_FLAGS = ISC_RET_SEQUENCE_DETECT | ISC_RET_REPLAY_DETECT | ISC_RET_CONFIDENTIALITY | ISC_RET_ALLOCATED_MEMORY | ISC_RET_STREAM;
@@ -100,25 +116,23 @@ TEST_F(FixtureWithCredHandle, InitContext) {
         nullptr,        // pInput
         0,              // Reserved2
         &sspCtx,        // phNewContext
-        &outputBufs,    // pOutput
+        &outputBufDesc, // pOutput
         &contextAttr,   // pfContextAttr
         nullptr         // ptsExpiry
     );
-    ASSERT_EQ(outputBufs.pBuffers[0], "[ClientHello]");
-    ASSERT_EQ(outputBufs.pBuffers[0].BufferType, SECBUFFER_TOKEN);
+    ASSERT_EQ(outputBuf, "[ClientHello]");
+    ASSERT_EQ(outputBuf.BufferType, SECBUFFER_TOKEN);
     ASSERT_EQ(retval, SEC_I_CONTINUE_NEEDED);
-    funcTable->FreeContextBuffer(outputBufs.pBuffers[0].pvBuffer);
-    outputBufs.pBuffers[0].pvBuffer = nullptr;
+    funcTable->FreeContextBuffer(outputBuf.pvBuffer);
+    outputBuf.pvBuffer = nullptr;
 
-    SecBufferDesc inputBufs{};
+    SecBufferDesc inputBufDesc{};
     SecBuffer inputBuf[2]{};
-    inputBufs.ulVersion = SECBUFFER_VERSION;
-    inputBufs.cBuffers = 2;
-    inputBufs.pBuffers = &inputBuf[0];
-    inputBuf[0].BufferType = SECBUFFER_TOKEN;
-    inputBuf[0].cbBuffer = 13;
-    inputBuf[0].pvBuffer = "[ServerHello]";
-    inputBuf[1].BufferType = SECBUFFER_EMPTY;
+    initSecBufferDesc(&inputBufDesc, inputBuf, 2);
+
+    initSecBufferLiteral(&inputBuf[0], SECBUFFER_TOKEN, "[ServerHello]");
+    initSecBuffer       (&inputBuf[1], SECBUFFER_EMPTY, nullptr, 0);
+    initSecBufferDesc(&inputBufDesc, inputBuf, 2);
 
     // second call, we give it the existing context and the input buffer
     std::string tmpstr;
@@ -135,20 +149,19 @@ TEST_F(FixtureWithCredHandle, InitContext) {
         REQ_FLAGS,      // fContextReq
         0,              // Reserved1
         0,              // TargetDataRep
-        &inputBufs,     // pInput
+        &inputBufDesc,  // pInput
         0,              // Reserved2
         nullptr,        // phNewContext
-        &outputBufs,    // pOutput
+        &outputBufDesc, // pOutput
         &contextAttr,   // pfContextAttr
         nullptr         // ptsExpiry
     );
     ASSERT_EQ(tmpstr, "[ServerHello]");
-    ASSERT_EQ(outputBufs.pBuffers[0], "[ClientKeyExchange]");
+    ASSERT_EQ(outputBuf, "[ClientKeyExchange]");
     ASSERT_EQ(retval, SEC_I_CONTINUE_NEEDED);
 
     // final call, handshake complete
-    inputBuf[0].cbBuffer = 10;
-    inputBuf[0].pvBuffer = "[Finished]";
+    initSecBufferLiteral(&inputBuf[0], SECBUFFER_TOKEN, "[Finished]");
 
     EXPECT_CALL(sslObject, connect()).WillOnce([&] {
         tmpstr = sslObject.rbio->readstr();
@@ -162,10 +175,10 @@ TEST_F(FixtureWithCredHandle, InitContext) {
         REQ_FLAGS,      // fContextReq
         0,              // Reserved1
         0,              // TargetDataRep
-        &inputBufs,     // pInput
+        &inputBufDesc,  // pInput
         0,              // Reserved2
         nullptr,        // phNewContext
-        &outputBufs,    // pOutput
+        &outputBufDesc, // pOutput
         &contextAttr,   // pfContextAttr
         nullptr         // ptsExpiry
     );
@@ -183,11 +196,9 @@ TEST_F(FixtureWithCredHandle, EncryptData) {
     SSL sslObject(opensslCtx);
     EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(&sslObject));
 
-    SecBufferDesc outputBufs{};
+    SecBufferDesc outputBufDesc{};
     SecBuffer outputBuf{};
-    outputBufs.ulVersion = SECBUFFER_VERSION;
-    outputBufs.cBuffers = 1;
-    outputBufs.pBuffers = &outputBuf;
+    initSecBufferDesc(&outputBufDesc, &outputBuf, 1);
 
     const unsigned long REQ_FLAGS = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
     unsigned long contextAttr;
@@ -206,14 +217,14 @@ TEST_F(FixtureWithCredHandle, EncryptData) {
         nullptr,        // pInput
         0,              // Reserved2
         &sspCtx,        // phNewContext
-        &outputBufs,    // pOutput
+        &outputBufDesc, // pOutput
         &contextAttr,   // pfContextAttr
         nullptr         // ptsExpiry
     );
-    ASSERT_EQ(outputBufs.pBuffers[0], "[Magic]");
-    ASSERT_EQ(outputBufs.pBuffers[0].BufferType, SECBUFFER_TOKEN);
+    ASSERT_EQ(outputBuf, "[Magic]");
+    ASSERT_EQ(outputBuf.BufferType, SECBUFFER_TOKEN);
     ASSERT_EQ(retval, SEC_E_OK);
-    funcTable->FreeContextBuffer(outputBufs.pBuffers[0].pvBuffer);
+    funcTable->FreeContextBuffer(outputBuf.pvBuffer);
 
     SecPkgContext_StreamSizes streamSizes{};
     retval = funcTable->QueryContextAttributesW(&sspCtx, SECPKG_ATTR_STREAM_SIZES, &streamSizes);
@@ -223,21 +234,12 @@ TEST_F(FixtureWithCredHandle, EncryptData) {
     SecBuffer dataBuf[4]{};
     std::unique_ptr<char[]> buf = std::make_unique<char[]>(10 + streamSizes.cbHeader + streamSizes.cbTrailer);
 
-    dataBuf[0].BufferType = SECBUFFER_STREAM_HEADER;
-    dataBuf[0].cbBuffer = streamSizes.cbHeader;
-    dataBuf[0].pvBuffer = &buf[0];
-    dataBuf[1].BufferType = SECBUFFER_DATA;
-    dataBuf[1].cbBuffer = 10;
-    dataBuf[1].pvBuffer = &buf[streamSizes.cbHeader];
-    dataBuf[2].BufferType = SECBUFFER_STREAM_TRAILER;
-    dataBuf[2].cbBuffer = streamSizes.cbTrailer;
-    dataBuf[2].pvBuffer = &buf[streamSizes.cbHeader+10];
-    dataBuf[3].BufferType = SECBUFFER_EMPTY;
-    dataBuf[3].cbBuffer = 0;
-    dataBuf[3].pvBuffer = nullptr;
-    dataBufDesc.ulVersion = SECBUFFER_VERSION;
-    dataBufDesc.cBuffers = 4;
-    dataBufDesc.pBuffers = dataBuf;
+    initSecBuffer(&dataBuf[0], SECBUFFER_STREAM_HEADER,  &buf[0], streamSizes.cbHeader);
+    initSecBuffer(&dataBuf[1], SECBUFFER_DATA,           &buf[streamSizes.cbHeader], 10);
+    initSecBuffer(&dataBuf[2], SECBUFFER_STREAM_TRAILER, &buf[streamSizes.cbHeader + 10], streamSizes.cbTrailer);
+    initSecBuffer(&dataBuf[3], SECBUFFER_EMPTY,          nullptr, 0);
+    initSecBufferDesc(&dataBufDesc, dataBuf, 4);
+
     memcpy(dataBuf[1].pvBuffer, "helloworld", 10);
 
     EXPECT_CALL(sslObject, write(_, _)).WillOnce([&](const void* p, int len) {
