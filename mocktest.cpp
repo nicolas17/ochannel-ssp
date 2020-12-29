@@ -176,3 +176,82 @@ TEST_F(FixtureWithCredHandle, InitContext) {
     EXPECT_CALL(openssl, SSL_free(&sslObject));
     funcTable->DeleteSecurityContext(&sspCtx);
 }
+
+TEST_F(FixtureWithCredHandle, EncryptData) {
+    // Initialize context with as little code as possible
+    CtxtHandle sspCtx{};
+    SSL sslObject(opensslCtx);
+    EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(&sslObject));
+
+    SecBufferDesc outputBufs{};
+    SecBuffer outputBuf{};
+    outputBufs.ulVersion = SECBUFFER_VERSION;
+    outputBufs.cBuffers = 1;
+    outputBufs.pBuffers = &outputBuf;
+
+    const unsigned long REQ_FLAGS = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
+    unsigned long contextAttr;
+
+    EXPECT_CALL(sslObject, connect()).WillOnce([&] {
+        sslObject.wbio->writestr("[Magic]");
+        return 1;
+    });
+    int retval = funcTable->InitializeSecurityContextW(
+        &sspCred,       // phCredential
+        nullptr,        // phContext
+        nullptr,        // pszTargetName
+        REQ_FLAGS,      // fContextReq
+        0,              // Reserved1
+        0,              // TargetDataRep
+        nullptr,        // pInput
+        0,              // Reserved2
+        &sspCtx,        // phNewContext
+        &outputBufs,    // pOutput
+        &contextAttr,   // pfContextAttr
+        nullptr         // ptsExpiry
+    );
+    ASSERT_EQ(outputBufs.pBuffers[0], "[Magic]");
+    ASSERT_EQ(outputBufs.pBuffers[0].BufferType, SECBUFFER_TOKEN);
+    ASSERT_EQ(retval, SEC_E_OK);
+    funcTable->FreeContextBuffer(outputBufs.pBuffers[0].pvBuffer);
+
+    SecPkgContext_StreamSizes streamSizes{};
+    retval = funcTable->QueryContextAttributesW(&sspCtx, SECPKG_ATTR_STREAM_SIZES, &streamSizes);
+    ASSERT_EQ(retval, SEC_E_OK);
+
+    SecBufferDesc dataBufDesc{};
+    SecBuffer dataBuf[4]{};
+    std::unique_ptr<char[]> buf = std::make_unique<char[]>(10 + streamSizes.cbHeader + streamSizes.cbTrailer);
+
+    dataBuf[0].BufferType = SECBUFFER_STREAM_HEADER;
+    dataBuf[0].cbBuffer = streamSizes.cbHeader;
+    dataBuf[0].pvBuffer = &buf[0];
+    dataBuf[1].BufferType = SECBUFFER_DATA;
+    dataBuf[1].cbBuffer = 10;
+    dataBuf[1].pvBuffer = &buf[streamSizes.cbHeader];
+    dataBuf[2].BufferType = SECBUFFER_STREAM_TRAILER;
+    dataBuf[2].cbBuffer = streamSizes.cbTrailer;
+    dataBuf[2].pvBuffer = &buf[streamSizes.cbHeader+10];
+    dataBuf[3].BufferType = SECBUFFER_EMPTY;
+    dataBuf[3].cbBuffer = 0;
+    dataBuf[3].pvBuffer = nullptr;
+    dataBufDesc.ulVersion = SECBUFFER_VERSION;
+    dataBufDesc.cBuffers = 4;
+    dataBufDesc.pBuffers = dataBuf;
+    memcpy(dataBuf[1].pvBuffer, "helloworld", 10);
+
+    EXPECT_CALL(sslObject, write(_, _)).WillOnce([&](const void* p, int len) {
+        EXPECT_EQ(std::string((const char*)p, len), "helloworld");
+        sslObject.wbio->writestr("[0005HELLOWORLD]");
+        return len;
+    });
+
+    retval = funcTable->EncryptMessage(&sspCtx, 0, &dataBufDesc, 0);
+    ASSERT_EQ(retval, SEC_E_OK);
+    ASSERT_EQ(dataBuf[0], "[0005");
+    ASSERT_EQ(dataBuf[1], "HELLOWORLD");
+    ASSERT_EQ(dataBuf[2], "]");
+
+    EXPECT_CALL(openssl, SSL_free(&sslObject));
+    funcTable->DeleteSecurityContext(&sspCtx);
+}
