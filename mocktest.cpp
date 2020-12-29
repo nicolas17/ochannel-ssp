@@ -189,42 +189,59 @@ TEST_F(FixtureWithCredHandle, InitContext) {
     EXPECT_CALL(openssl, SSL_free(&sslObject));
     funcTable->DeleteSecurityContext(&sspCtx);
 }
-
-TEST_F(FixtureWithCredHandle, EncryptData) {
-    // Initialize context with as little code as possible
+class FixtureWithInitContext : public FixtureWithCredHandle {
+protected:
     CtxtHandle sspCtx{};
-    SSL sslObject(opensslCtx);
-    EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(&sslObject));
+    SSL sslObject;
 
-    SecBufferDesc outputBufDesc{};
-    SecBuffer outputBuf{};
-    initSecBufferDesc(&outputBufDesc, &outputBuf, 1);
+    FixtureWithInitContext() : sslObject(nullptr) {}
 
-    const unsigned long REQ_FLAGS = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
-    unsigned long contextAttr;
+    void SetUp() {
+        FixtureWithCredHandle::SetUp();
 
-    EXPECT_CALL(sslObject, connect()).WillOnce([&] {
-        sslObject.wbio->writestr("[Magic]");
-        return 1;
-    });
-    int retval = funcTable->InitializeSecurityContextW(
-        &sspCred,       // phCredential
-        nullptr,        // phContext
-        nullptr,        // pszTargetName
-        REQ_FLAGS,      // fContextReq
-        0,              // Reserved1
-        0,              // TargetDataRep
-        nullptr,        // pInput
-        0,              // Reserved2
-        &sspCtx,        // phNewContext
-        &outputBufDesc, // pOutput
-        &contextAttr,   // pfContextAttr
-        nullptr         // ptsExpiry
-    );
-    ASSERT_EQ(outputBuf, "[Magic]");
-    ASSERT_EQ(outputBuf.BufferType, SECBUFFER_TOKEN);
-    ASSERT_EQ(retval, SEC_E_OK);
-    funcTable->FreeContextBuffer(outputBuf.pvBuffer);
+        // Initialize context with as little code as possible
+        EXPECT_CALL(openssl, SSL_new(_)).WillOnce(Return(&sslObject));
+
+        SecBufferDesc outputBufDesc{};
+        SecBuffer outputBuf{};
+        initSecBufferDesc(&outputBufDesc, &outputBuf, 1);
+
+        const unsigned long REQ_FLAGS = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
+        unsigned long contextAttr;
+
+        EXPECT_CALL(sslObject, connect()).WillOnce([&] {
+            sslObject.wbio->writestr("[Magic]");
+            return 1;
+        });
+        int retval = funcTable->InitializeSecurityContextW(
+            &sspCred,       // phCredential
+            nullptr,        // phContext
+            nullptr,        // pszTargetName
+            REQ_FLAGS,      // fContextReq
+            0,              // Reserved1
+            0,              // TargetDataRep
+            nullptr,        // pInput
+            0,              // Reserved2
+            &sspCtx,        // phNewContext
+            &outputBufDesc, // pOutput
+            &contextAttr,   // pfContextAttr
+            nullptr         // ptsExpiry
+        );
+        ASSERT_EQ(outputBuf, "[Magic]");
+        ASSERT_EQ(outputBuf.BufferType, SECBUFFER_TOKEN);
+        ASSERT_EQ(retval, SEC_E_OK);
+        funcTable->FreeContextBuffer(outputBuf.pvBuffer);
+    }
+    void TearDown() {
+        EXPECT_CALL(openssl, SSL_free(&sslObject));
+        funcTable->DeleteSecurityContext(&sspCtx);
+
+        FixtureWithCredHandle::TearDown();
+    }
+};
+
+TEST_F(FixtureWithInitContext, EncryptData) {
+    int retval;
 
     SecPkgContext_StreamSizes streamSizes{};
     retval = funcTable->QueryContextAttributesW(&sspCtx, SECPKG_ATTR_STREAM_SIZES, &streamSizes);
@@ -253,7 +270,4 @@ TEST_F(FixtureWithCredHandle, EncryptData) {
     ASSERT_EQ(dataBuf[0], "[0005");
     ASSERT_EQ(dataBuf[1], "HELLOWORLD");
     ASSERT_EQ(dataBuf[2], "]");
-
-    EXPECT_CALL(openssl, SSL_free(&sslObject));
-    funcTable->DeleteSecurityContext(&sspCtx);
 }
