@@ -271,3 +271,19 @@ TEST_F(FixtureWithInitContext, EncryptData) {
     ASSERT_EQ(dataBuf[1], "HELLOWORLD");
     ASSERT_EQ(dataBuf[2], "]");
 }
+
+// test call to EncryptMessage without passing a SECBUFFER_DATA buffer
+TEST_F(FixtureWithInitContext, EncryptMessageBadBufferType) {
+    int retval;
+
+    SecBufferDesc dataBufDesc{};
+    SecBuffer dataBuf[2]{};
+    char buf[5];
+
+    initSecBuffer(&dataBuf[0], SECBUFFER_STREAM_HEADER, &buf[0], 5);
+    initSecBuffer(&dataBuf[1], SECBUFFER_EMPTY, nullptr, 0);
+    initSecBufferDesc(&dataBufDesc, dataBuf, 2);
+
+    retval = funcTable->EncryptMessage(&sspCtx, 0, &dataBufDesc, 0);
+    ASSERT_EQ(retval, SEC_E_INVALID_TOKEN);
+}

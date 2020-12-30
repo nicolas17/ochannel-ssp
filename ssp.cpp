@@ -288,26 +288,44 @@ SECURITY_STATUS SEC_ENTRY myEncryptMessage(
     printf("EncryptMessage called\n");
     dumpBufferDesc(pMessage);
 
-    int retval = SSL_write(ctx->m_ssl, pMessage->pBuffers[1].pvBuffer, pMessage->pBuffers[1].cbBuffer);
+    PSecBuffer bufHeader{}, bufData{}, bufTrailer{};
+    for (int i=0; i < pMessage->cBuffers; ++i) {
+        switch (pMessage->pBuffers[i].BufferType) {
+        case SECBUFFER_STREAM_HEADER:
+            bufHeader = &pMessage->pBuffers[i];
+            break;
+        case SECBUFFER_DATA:
+            bufData = &pMessage->pBuffers[i];
+            break;
+        case SECBUFFER_STREAM_TRAILER:
+            bufTrailer = &pMessage->pBuffers[i];
+            break;
+        }
+    }
+    if (!bufHeader || !bufData || !bufTrailer) {
+        return SEC_E_INVALID_TOKEN;
+    }
+
+    int retval = SSL_write(ctx->m_ssl, bufData->pvBuffer, bufData->cbBuffer);
     printf("SSL_write returned %d\n", retval);
     int pending = BIO_pending(ctx->m_network_bio);
     printf("and wrote %d bytes to the output BIO\n", pending);
 
     // we can't *really* rely on the buffers being contiguous
     if (pending <= 5) { return SEC_E_INTERNAL_ERROR; }
-    retval = BIO_read(ctx->m_network_bio, pMessage->pBuffers[0].pvBuffer, pMessage->pBuffers[0].cbBuffer);
+    retval = BIO_read(ctx->m_network_bio, bufHeader->pvBuffer, bufHeader->cbBuffer);
     printf("Read %d bytes into header buffer\n", retval);
-    retval = BIO_read(ctx->m_network_bio, pMessage->pBuffers[1].pvBuffer, pMessage->pBuffers[1].cbBuffer);
+    retval = BIO_read(ctx->m_network_bio, bufData->pvBuffer, bufData->cbBuffer);
     printf("Read %d bytes into data buffer\n", retval);
-    if (retval < pMessage->pBuffers[1].cbBuffer) {
+    if (retval < bufData->cbBuffer) {
         printf("Adjusting size of data buffer\n");
-        pMessage->pBuffers[1].cbBuffer = retval;
+        bufData->cbBuffer = retval;
     }
-    retval = BIO_read(ctx->m_network_bio, pMessage->pBuffers[2].pvBuffer, pMessage->pBuffers[2].cbBuffer);
+    retval = BIO_read(ctx->m_network_bio, bufTrailer->pvBuffer, bufTrailer->cbBuffer);
     printf("Read %d bytes into trailer buffer\n", retval);
-    if (retval < pMessage->pBuffers[2].cbBuffer) {
+    if (retval < bufTrailer->cbBuffer) {
         printf("Adjusting size of trailer buffer\n");
-        pMessage->pBuffers[2].cbBuffer = retval;
+        bufTrailer->cbBuffer = retval;
     }
 
     return SEC_E_OK;
