@@ -287,3 +287,84 @@ TEST_F(FixtureWithInitContext, EncryptMessageBadBufferType) {
     retval = funcTable->EncryptMessage(&sspCtx, 0, &dataBufDesc, 0);
     ASSERT_EQ(retval, SEC_E_INVALID_TOKEN);
 }
+
+TEST_F(FixtureWithInitContext, DISABLED_DecryptBasic) {
+    SecBufferDesc dataBufDesc{};
+    SecBuffer dataBuf[4]{};
+
+    std::vector<std::pair<std::string, std::string>> data = {
+        {"[0006ONETWO]", "onetwo"},
+        {"[0009THREEFOUR]", "threefour"}
+    };
+    for (const auto&[ciphertext, plaintext] : data) {
+        size_t plainLen = plaintext.length();
+
+        std::string buf = ciphertext;
+
+        initSecBuffer(&dataBuf[0], SECBUFFER_DATA, &buf[0], buf.size());
+        initSecBuffer(&dataBuf[1], SECBUFFER_EMPTY, nullptr, 0);
+        initSecBuffer(&dataBuf[2], SECBUFFER_EMPTY, nullptr, 0);
+        initSecBuffer(&dataBuf[3], SECBUFFER_EMPTY, nullptr, 0);
+        initSecBufferDesc(&dataBufDesc, dataBuf, 4);
+
+        EXPECT_CALL(sslObject, read(_, _)).WillOnce([&](void* p, int len) {
+            EXPECT_EQ(sslObject.rbio->readstr(), ciphertext);
+            plaintext.copy((char*)p, plainLen);
+            return (int)plainLen;
+        });
+
+        int retval = funcTable->DecryptMessage(&sspCtx, &dataBufDesc, 0, 0);
+        ASSERT_EQ(retval, SEC_E_OK);
+        ASSERT_EQ(dataBuf[0].BufferType, SECBUFFER_STREAM_HEADER);
+        ASSERT_EQ(dataBuf[1].BufferType, SECBUFFER_DATA);
+        ASSERT_EQ(dataBuf[2].BufferType, SECBUFFER_STREAM_TRAILER);
+        ASSERT_EQ(dataBuf[3].BufferType, SECBUFFER_EMPTY);
+        ASSERT_EQ(dataBuf[1], plaintext);
+    }
+}
+TEST_F(FixtureWithInitContext, DISABLED_DecryptPartial) {
+    SecBufferDesc dataBufDesc{};
+    SecBuffer dataBuf[4]{};
+
+    std::string buf = "[000";
+
+    initSecBuffer(&dataBuf[0], SECBUFFER_DATA, &buf[0], buf.size());
+    initSecBufferDesc(&dataBufDesc, dataBuf, 4);
+
+    EXPECT_CALL(sslObject, read(_, _)).WillOnce([&](void* p, int len) {
+        EXPECT_EQ(sslObject.rbio->readstr(), "[000");
+        sslObject.last_error = SSL_ERROR_WANT_READ;
+        return -1;
+    });
+
+    int retval = funcTable->DecryptMessage(&sspCtx, &dataBufDesc, 0, 0);
+    ASSERT_EQ(retval, SEC_E_INCOMPLETE_MESSAGE);
+}
+TEST_F(FixtureWithInitContext, DISABLED_DecryptTwoMessages) {
+    SecBufferDesc dataBufDesc{};
+    SecBuffer dataBuf[4]{};
+
+    std::string buf = "[0005HELLO][0004TEST]";
+
+    initSecBuffer(&dataBuf[0], SECBUFFER_DATA, &buf[0], buf.size());
+    initSecBuffer(&dataBuf[1], SECBUFFER_EMPTY, nullptr, 0);
+    initSecBuffer(&dataBuf[2], SECBUFFER_EMPTY, nullptr, 0);
+    initSecBuffer(&dataBuf[3], SECBUFFER_EMPTY, nullptr, 0);
+    initSecBufferDesc(&dataBufDesc, dataBuf, 4);
+
+    EXPECT_CALL(sslObject, read(_, _)).WillOnce([&](void* p, int len) {
+        EXPECT_EQ(sslObject.rbio->readbuf, "[0005HELLO][0004TEST]");
+        sslObject.rbio->readbuf.erase(0, 5 + 5 + 1);
+        memcpy(p, "hello", 5);
+        return 5;
+    });
+
+    int retval = funcTable->DecryptMessage(&sspCtx, &dataBufDesc, 0, 0);
+    ASSERT_EQ(retval, SEC_E_OK);
+    ASSERT_EQ(dataBuf[0].BufferType, SECBUFFER_STREAM_HEADER);
+    ASSERT_EQ(dataBuf[1].BufferType, SECBUFFER_DATA);
+    ASSERT_EQ(dataBuf[2].BufferType, SECBUFFER_STREAM_TRAILER);
+    ASSERT_EQ(dataBuf[3].BufferType, SECBUFFER_EXTRA);
+    ASSERT_EQ(dataBuf[1], "hello");
+    ASSERT_EQ(dataBuf[3].cbBuffer, strlen("[0004TEST]"));
+}
