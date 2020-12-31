@@ -261,13 +261,13 @@ TEST_F(FixtureWithInitContext, EncryptData) {
 
     EXPECT_CALL(sslObject, write(_, _)).WillOnce([&](const void* p, int len) {
         EXPECT_EQ(std::string((const char*)p, len), "helloworld");
-        sslObject.wbio->writestr("[0005HELLOWORLD]");
+        sslObject.wbio->writestr("[0010HELLOWORLD]");
         return len;
     });
 
     retval = funcTable->EncryptMessage(&sspCtx, 0, &dataBufDesc, 0);
     ASSERT_EQ(retval, SEC_E_OK);
-    ASSERT_EQ(dataBuf[0], "[0005");
+    ASSERT_EQ(dataBuf[0], "[0010");
     ASSERT_EQ(dataBuf[1], "HELLOWORLD");
     ASSERT_EQ(dataBuf[2], "]");
 }
