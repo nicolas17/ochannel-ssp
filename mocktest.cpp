@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2020 Nicolás Alvarez <nicolas.alvarez@gmail.com>
+// SPDX-FileCopyrightText: 2021 Nicolás Alvarez <nicolas.alvarez@gmail.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -288,7 +288,7 @@ TEST_F(FixtureWithInitContext, EncryptMessageBadBufferType) {
     ASSERT_EQ(retval, SEC_E_INVALID_TOKEN);
 }
 
-TEST_F(FixtureWithInitContext, DISABLED_DecryptBasic) {
+TEST_F(FixtureWithInitContext, DecryptBasic) {
     SecBufferDesc dataBufDesc{};
     SecBuffer dataBuf[4]{};
 

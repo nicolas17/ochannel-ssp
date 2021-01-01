@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2020 Nicolás Alvarez <nicolas.alvarez@gmail.com>
+// SPDX-FileCopyrightText: 2021 Nicolás Alvarez <nicolas.alvarez@gmail.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -330,6 +330,73 @@ SECURITY_STATUS SEC_ENTRY myEncryptMessage(
 
     return SEC_E_OK;
 }
+extern "C"
+SECURITY_STATUS SEC_ENTRY myDecryptMessage(
+    _In_      PCtxtHandle         phContext,
+    _In_      PSecBufferDesc      pMessage,
+    _In_      unsigned long       MessageSeqNo,
+    _Out_opt_ unsigned long*      pfQOP)
+{
+    auto* ctx = fromSecHandle<SSPContext>(phContext);
+    if (!ctx) {
+        return SEC_E_INVALID_HANDLE;
+    }
+
+    if (pfQOP != nullptr) {
+        return SEC_E_NOT_SUPPORTED;
+    }
+
+    printf("DecryptMessage called\n");
+    dumpBufferDesc(pMessage);
+    char* input; size_t inputLength;
+    PSecBuffer bufHeader{}, bufData{}, bufTrailer{}, bufExtra{};
+    for (int i = 0; i < pMessage->cBuffers; ++i) {
+        switch (pMessage->pBuffers[i].BufferType) {
+        case SECBUFFER_DATA:
+            // this is the input buffer
+            input = (char*)pMessage->pBuffers[i].pvBuffer;
+            inputLength = pMessage->pBuffers[i].cbBuffer;
+            // but it's also the first buffer, so we'll use it as the header buffer for the output
+            bufHeader = &pMessage->pBuffers[i];
+            break;
+        case SECBUFFER_EMPTY:
+            if (!bufData) {
+                bufData = &pMessage->pBuffers[i];
+            } else if (!bufTrailer) {
+                bufTrailer = &pMessage->pBuffers[i];
+            } else if (!bufExtra) {
+                bufExtra = &pMessage->pBuffers[i];
+            }
+            break;
+        }
+    }
+    if (!bufHeader || !bufData || !bufTrailer || !bufExtra) {
+        return SEC_E_INVALID_TOKEN;
+    }
+
+    BIO_write(ctx->m_network_bio, input, inputLength);
+
+    bufHeader->BufferType = SECBUFFER_STREAM_HEADER;
+    bufHeader->cbBuffer = 5;
+
+    bufData->BufferType = SECBUFFER_DATA;
+    bufData->pvBuffer = input + 5;
+    const int capacity = inputLength - 5;
+    int retval = SSL_read(ctx->m_ssl, bufData->pvBuffer, capacity);
+    printf("Capacity was %d but we read %d bytes\n", capacity, retval);
+    if (retval < 0) { return SEC_E_INTERNAL_ERROR; }
+
+    bufData->cbBuffer = retval;
+
+    bufTrailer->BufferType = SECBUFFER_STREAM_TRAILER;
+    bufTrailer->pvBuffer = input + 5 + retval;
+    bufTrailer->cbBuffer = inputLength - 5 - retval;
+
+    printf("DecryptMessage returning\n");
+    dumpBufferDesc(pMessage);
+
+    return SEC_E_OK;
+}
 
 SecurityFunctionTableW g_functionTable = {
     SECURITY_SUPPORT_PROVIDER_INTERFACE_VERSION, // dwVersion
@@ -351,14 +418,14 @@ SecurityFunctionTableW g_functionTable = {
     &myFreeContextBuffer, // FreeContextBuffer
     nullptr, // QuerySecurityPackageInfoW
     &myEncryptMessage, // Reserved3, but actually EncryptMessage calls this
-    nullptr, // Reserved4
+    &myDecryptMessage, // Reserved4, but actually DecryptMessage calls this
     nullptr, // ExportSecurityContext
     nullptr, // ImportSecurityContextW
     nullptr, // AddCredentialsW
     nullptr, // Reserved8
     nullptr, // QuerySecurityContextToken
     &myEncryptMessage, // EncryptMessage
-    nullptr  // DecryptMessage
+    &myDecryptMessage  // DecryptMessage
 };
 
 #ifndef INIT_FUNCTION_NAME
