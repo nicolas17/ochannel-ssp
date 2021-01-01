@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2020 Nicolás Alvarez <nicolas.alvarez@gmail.com>
+// SPDX-FileCopyrightText: 2021 Nicolás Alvarez <nicolas.alvarez@gmail.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -52,6 +52,7 @@ public:
     SSPContext(SSPCredentials* cred);
     ~SSPContext();
     bool do_connect();
+    void log_bio_buffers();
 
 //private:
     // non-copyable

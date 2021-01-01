@@ -375,6 +375,7 @@ SECURITY_STATUS SEC_ENTRY myDecryptMessage(
     }
 
     BIO_write(ctx->m_network_bio, input, inputLength);
+    ctx->log_bio_buffers();
 
     bufHeader->BufferType = SECBUFFER_STREAM_HEADER;
     bufHeader->cbBuffer = 5;
@@ -382,9 +383,11 @@ SECURITY_STATUS SEC_ENTRY myDecryptMessage(
     bufData->BufferType = SECBUFFER_DATA;
     bufData->pvBuffer = input + 5;
     const int capacity = inputLength - 5;
+    printf("calling SSL_read\n");
     int retval = SSL_read(ctx->m_ssl, bufData->pvBuffer, capacity);
     printf("Capacity was %d but we read %d bytes\n", capacity, retval);
     if (retval < 0) { return SEC_E_INTERNAL_ERROR; }
+    ctx->log_bio_buffers();
 
     bufData->cbBuffer = retval;
 

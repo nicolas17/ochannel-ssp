@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2020 Nicolás Alvarez <nicolas.alvarez@gmail.com>
+// SPDX-FileCopyrightText: 2021 Nicolás Alvarez <nicolas.alvarez@gmail.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -45,7 +45,10 @@ bool SSPContext::do_connect()
     if (retval <= 0) {
         printf("Error code is %d\n", SSL_get_error(m_ssl, retval));
     }
+    log_bio_buffers();
+    return (retval == 1);
+}
+void SSPContext::log_bio_buffers() {
     printf("OpenSSL input (internal) buffer has %d bytes left\n", BIO_pending(m_internal_bio));
     printf("OpenSSL output (network) buffer has %d bytes left\n", BIO_pending(m_network_bio));
-    return (retval == 1);
 }
